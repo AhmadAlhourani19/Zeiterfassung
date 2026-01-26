@@ -5,8 +5,9 @@ import type { NavId } from "./layout/AppShell";
 import { TimeTracer } from "./pages/TimeTracer";
 import { Projects } from "./pages/Projects";
 import { Reports } from "./pages/Reports";
-import { getDay, getMonth } from "./api/domino";
-import type { StempeluhrEntry } from "./api/types";
+import { Status } from "./pages/Status";
+import { createProject, getCurrentStatus, getDay, getMonth, getProjects } from "./api/domino";
+import type { ProjectEntry, StatusEntry, StempeluhrEntry } from "./api/types";
 import { formatDDMMYYYY, formatMMYYYY, getDisplayUserFromKey } from "./api/grouping";
 
 function currentKeys() {
@@ -23,15 +24,28 @@ export default function App() {
   const [loadingToday, setLoadingToday] = useState(false);
   const [loadingMonth, setLoadingMonth] = useState(false);
 
-  const [projects, setProjects] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem("pmzeiterfassung.projects");
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch {
-      return [];
+  const [projects, setProjects] = useState<ProjectEntry[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+
+  const [statusEntries, setStatusEntries] = useState<StatusEntry[]>([]);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const projectSuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const item of projects) {
+      if (item.Dokumentgeloescht) continue;
+      const name = (item.Projektname ?? "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(name);
     }
-  });
+    return list;
+  }, [projects]);
 
   const userName = useMemo(() => {
     const first = todayEntries[0] ?? monthEntries[0];
@@ -65,8 +79,57 @@ export default function App() {
     loadMonth();
   }
 
+  async function loadProjects() {
+    setLoadingProjects(true);
+    setProjectsError(null);
+    try {
+      const data = await getProjects();
+      setProjects(Array.isArray(data) ? data : []);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Projekte konnten nicht geladen werden";
+      setProjects([]);
+      setProjectsError(message || "Projekte konnten nicht geladen werden");
+    } finally {
+      setLoadingProjects(false);
+    }
+  }
+
+  async function loadStatus() {
+    setLoadingStatus(true);
+    setStatusError(null);
+    try {
+      const data = await getCurrentStatus();
+      setStatusEntries(Array.isArray(data) ? data : []);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Status konnte nicht geladen werden";
+      setStatusEntries([]);
+      setStatusError(message || "Status konnte nicht geladen werden");
+    } finally {
+      setLoadingStatus(false);
+    }
+  }
+
+  async function ensureProject(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const exists = projects.some(
+      (item) =>
+        !item.Dokumentgeloescht &&
+        (item.Projektname ?? "").toLowerCase() === trimmed.toLowerCase()
+    );
+    if (exists) return;
+    try {
+      await createProject({ Projektname: trimmed });
+      await loadProjects();
+    } catch {
+      // ignore suggestion creation errors
+    }
+  }
+
   useEffect(() => {
     refreshAll();
+    loadProjects();
+    loadStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -80,29 +143,32 @@ export default function App() {
             todayEntries={todayEntries}
             loading={loadingToday || loadingMonth}
             onRefresh={refreshAll}
-            projectSuggestions={projects}
+            projectSuggestions={projectSuggestions}
             onProjectUsed={(p) => {
-              // add recent project automatically if new
-              if (!p) return;
-              setProjects((prev) => {
-                if (prev.some((x) => x.toLowerCase() === p.toLowerCase())) return prev;
-                const next = [p, ...prev].slice(0, 25);
-                localStorage.setItem("pmzeiterfassung.projects", JSON.stringify(next));
-                return next;
-              });
+              void ensureProject(p);
             }}
           />
         )}
 
         {active === "projects" && (
           <Projects
-            onProjectsChange={(p) => {
-              setProjects(p);
-            }}
+            projects={projects}
+            loading={loadingProjects}
+            error={projectsError}
+            onReload={loadProjects}
           />
         )}
 
         {active === "reports" && <Reports />}
+
+        {active === "status" && (
+          <Status
+            entries={statusEntries}
+            loading={loadingStatus}
+            error={statusError}
+            onReload={loadStatus}
+          />
+        )}
       </AppShell>
     </>
   );

@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { StempeluhrEntry } from "../api/types";
 import { bookingLabel } from "../api/grouping";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
-import { createPunch } from "../api/domino";
+import { createPunch, getUserStatusLookup, updatePunchStatus } from "../api/domino";
 
 function latestEntry(entries: StempeluhrEntry[]) {
   if (!entries.length) return null;
@@ -32,21 +32,77 @@ export function TimeTracer({
     () => calcWorkAndBreak(intervals),
     [intervals]
   );
+  const breakInfo =
+    "Nach ArbZG werden Mindestpausen abgezogen, auch wenn sie nicht gestempelt wurden.";
 
   const [projekt, setProjekt] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [statusUnid, setStatusUnid] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getUserStatusLookup()
+      .then((res) => {
+        if (!mounted) return;
+        setStatusUnid(res.unid ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setStatusUnid(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function updateStatus(type: "0" | "1", project: string) {
+    const cleanedProject = project.trim() || latest?.Projekt?.trim() || "";
+    let unid = statusUnid;
+    if (!unid) {
+      const lookup = await getUserStatusLookup();
+      unid = lookup.unid ?? null;
+      setStatusUnid(unid);
+    }
+    if (!unid) return;
+    const payload: {
+      Buchungstyp: "0" | "1";
+      Zeit: string;
+      Projekt?: string;
+      Projektname?: string;
+    } = {
+      Buchungstyp: type,
+      Zeit: new Date().toISOString(),
+    };
+
+    if (cleanedProject) {
+      payload.Projekt = cleanedProject;
+      payload.Projektname = cleanedProject;
+    } else {
+      payload.Projekt = "";
+      payload.Projektname = "";
+    }
+
+    await updatePunchStatus(unid, payload);
+  }
 
   async function doPunch(type: "0" | "1") {
     setBusy(true);
     setErr(null);
     try {
-      await createPunch({ Buchungstyp: type, Projekt: projekt.trim() });
+      const trimmed = projekt.trim();
+      await createPunch({ Buchungstyp: type, Projekt: trimmed });
+      try {
+        await updateStatus(type, trimmed);
+      } catch {
+        // ignore status update errors for now
+      }
       if (projekt.trim()) onProjectUsed(projekt.trim());
       setProjekt("");
       onRefresh();
-    } catch (e: any) {
-      setErr(e?.message ?? "Buchung fehlgeschlagen");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Buchung fehlgeschlagen";
+      setErr(message || "Buchung fehlgeschlagen");
     } finally {
       setBusy(false);
     }
@@ -74,15 +130,19 @@ export function TimeTracer({
             </div>
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <Stat title="Arbeitszeit (brutto)" value={fmtHM(workMinutes)} />
-              <Stat title="Pausen genommen" value={fmtHM(breakMinutes)} />
-              <Stat title="Pause erforderlich" value={fmtHM(requiredBreak)} />
               <Stat
                 title="Arbeitszeit (netto)"
                 value={fmtHM(netMinutes)}
-                hint={missingBreak > 0 ? `Fehlende Pause: ${fmtHM(missingBreak)}` : "OK"}
                 highlight={missingBreak > 0}
               />
+              <div className="relative group">
+                <Stat title="Pausen genommen" value={fmtHM(breakMinutes)} />
+                <div className="pointer-events-none absolute left-2 top-full hidden w-64 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg group-hover:block">
+                  {breakInfo}
+                </div>
+              </div>
+              <Stat title="Arbeitszeit (brutto)" value={fmtHM(workMinutes)} />
+              <Stat title="Pause erforderlich" value={fmtHM(requiredBreak)} />
             </div>
           </div>
 
@@ -135,7 +195,7 @@ export function TimeTracer({
                     onClick={() => doPunch("1")}
                     className="rounded-2xl bg-rose-600 text-white px-5 py-3 text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
                   >
-                    {busy ? "Speichern…" : "Abmelden"}
+                    {busy ? "Speichern…" : "Abmelden / Pause"}
                   </button>
                 </>
               )}
@@ -147,34 +207,6 @@ export function TimeTracer({
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-semibold">Arbeitsphasen (heute)</h3>
-        <div className="mt-3 space-y-2">
-          {intervals.length === 0 ? (
-            <div className="text-sm text-slate-500">Noch keine Arbeitsphasen.</div>
-          ) : (
-            intervals.map((it, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-              >
-                <div className="text-sm">
-                  <span className="font-medium">
-                    {it.start.toLocaleTimeString()} – {it.end.toLocaleTimeString()}
-                  </span>
-                  {it.project ? (
-                    <span className="text-slate-600"> • {it.project}</span>
-                  ) : (
-                    <span className="text-slate-400"> • (ohne Projekt)</span>
-                  )}
-                </div>
-                <div className="text-sm text-slate-600">{fmtHM(Math.round((+it.end - +it.start) / 60000))}</div>
-              </div>
-            ))
-          )}
         </div>
       </div>
     </div>

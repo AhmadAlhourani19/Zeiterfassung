@@ -28,7 +28,7 @@ function buildCsv(rows: string[][]) {
 }
 
 function downloadCsv(filename: string, rows: string[][]) {
-  const csv = buildCsv(rows);
+  const csv = "\ufeff" + buildCsv(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

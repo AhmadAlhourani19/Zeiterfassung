@@ -81,7 +81,7 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
               "bg-rose-600 text-white hover:bg-rose-700",
             ].join(" ")}
           >
-            {loadingAction === "1" ? "Speichern..." : "Abmelden"}
+            {loadingAction === "1" ? "Speichern..." : "Abmelden / Pause"}
           </button>
         </div>
       </div>
