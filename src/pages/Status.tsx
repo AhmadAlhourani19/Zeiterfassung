@@ -93,6 +93,7 @@ function getProject(entry: StatusEntry) {
 function getStatus(entry: StatusEntry) {
   const bt = (entry.Buchungstyp ?? "").trim();
   if (bt === "0") return { label: "Online", tone: "emerald" };
+  if (bt === "2") return { label: "Pause", tone: "amber" };
   if (bt === "" || bt === "1") return { label: "Offline", tone: "slate" };
   if (entry.Status) return { label: entry.Status, tone: "amber" };
   return { label: "Unbekannt", tone: "amber" };
@@ -100,6 +101,12 @@ function getStatus(entry: StatusEntry) {
 
 export function Status({ entries, loading, error, onReload }: Props) {
   const [standortFilter, setStandortFilter] = useState("Alle");
+  const [sortBy, setSortBy] = useState<"name" | "status">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const showStandort = standortFilter === "Alle";
+  const gridCols = showStandort
+    ? "grid-cols-[110px_1fr_110px] sm:grid-cols-[140px_1fr_140px]"
+    : "grid-cols-[1fr_110px] sm:grid-cols-[1fr_140px]";
 
   const standorte = useMemo(() => {
     const set = new Set<string>();
@@ -115,18 +122,22 @@ export function Status({ entries, loading, error, onReload }: Props) {
       const status = getStatus(entry);
       const name = getName(entry);
       const standort = getStandort(entry);
-      const project = getProject(entry);
       const time = formatTime(entry.Zeit);
       const rank = status.label.toLowerCase().includes("online") ? 0 : 1;
-      return { entry, status, name, standort, project, time, rank };
+      return { entry, status, name, standort, time, rank };
     });
 
     return mapped.sort((a, b) => {
-      if (a.rank !== b.rank) return a.rank - b.rank;
-      if (a.standort !== b.standort) return a.standort.localeCompare(b.standort);
-      return a.name.localeCompare(b.name);
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortBy === "status") {
+        if (a.rank !== b.rank) return (a.rank - b.rank) * dir;
+        return a.name.localeCompare(b.name) * dir;
+      }
+      if (a.name !== b.name) return a.name.localeCompare(b.name) * dir;
+      if (a.rank !== b.rank) return (a.rank - b.rank) * dir;
+      return a.standort.localeCompare(b.standort) * dir;
     });
-  }, [entries]);
+  }, [entries, sortBy, sortDir]);
 
   const filtered = useMemo(() => {
     if (standortFilter === "Alle") return sorted;
@@ -135,16 +146,21 @@ export function Status({ entries, loading, error, onReload }: Props) {
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Aktueller Mitarbeiter Status</h2>
-        </div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Aktueller Mitarbeiter Status</h2>
         <button
+          type="button"
           onClick={() => void onReload()}
           disabled={loading}
-          className="w-full sm:w-auto rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Aktualisieren"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Aktualisieren
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 0 1 15.2-6.4" />
+            <path d="M21 12a9 9 0 0 1-15.2 6.4" />
+            <path d="M3 4v5h5" />
+            <path d="M21 20v-5h-5" />
+          </svg>
         </button>
       </div>
 
@@ -155,7 +171,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
       )}
 
       <div className="mt-4">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap">
           {standorte.map((item) => (
             <button
               key={item}
@@ -172,63 +188,90 @@ export function Status({ entries, loading, error, onReload }: Props) {
           ))}
         </div>
 
-        <div className="mt-4">
-          <div className="hidden sm:grid sm:grid-cols-[140px_1fr_140px] rounded-t-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500">
-            <div>Standort</div>
-            <div>Name</div>
-            <div className="text-right">Status</div>
-          </div>
+        <div className="mt-4 overflow-x-auto pb-2">
+          <div className="min-w-0 sm:min-w-[520px] rounded-2xl border border-slate-200">
+            <div className={["grid bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500", gridCols].join(" ")}>
+              {showStandort && <div>Standort</div>}
+              <button
+                type="button"
+                onClick={() => {
+                  if (sortBy === "name") {
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortBy("name");
+                    setSortDir("asc");
+                  }
+                }}
+                className="flex items-center gap-2 text-left hover:text-slate-700"
+              >
+                Name
+                <span className="text-[10px] text-slate-400">
+                  {sortBy === "name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sortBy === "status") {
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortBy("status");
+                    setSortDir("asc");
+                  }
+                }}
+                className="flex items-center justify-end gap-2 text-right hover:text-slate-700"
+              >
+                Status
+                <span className="text-[10px] text-slate-400">
+                  {sortBy === "status" ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                </span>
+              </button>
+            </div>
 
-          <div className="space-y-2 sm:space-y-0 sm:divide-y sm:divide-slate-100 sm:border sm:border-slate-200 sm:border-t-0 sm:rounded-b-2xl sm:overflow-hidden">
-            {loading && (
-              <div className="px-4 py-3 text-sm text-slate-500">Lade Status...</div>
-            )}
+            <div className="divide-y divide-slate-100">
+              {loading && (
+                <div className="px-4 py-3 text-sm text-slate-500">Lade Status...</div>
+              )}
 
-            {!loading && filtered.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-slate-500">Keine Statusdaten vorhanden.</div>
-            ) : (
-              filtered.map(({ entry, status, name, standort, time }) => {
-                const badgeClass = [
-                  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
-                  status.tone === "emerald"
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                    : status.tone === "slate"
-                    ? "bg-slate-100 text-slate-700 ring-slate-200"
-                    : "bg-amber-50 text-amber-700 ring-amber-200",
-                ].join(" ");
+              {!loading && filtered.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-slate-500">
+                  Keine Statusdaten vorhanden.
+                </div>
+              ) : (
+                filtered.map(({ entry, status, name, standort, time }) => {
+                  const badgeClass = [
+                    "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
+                    status.tone === "emerald"
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                      : status.tone === "slate"
+                      ? "bg-slate-100 text-slate-700 ring-slate-200"
+                      : "bg-amber-50 text-amber-700 ring-amber-200",
+                  ].join(" ");
 
-                return (
+                  return (
                   <div
                     key={entry["@unid"] ?? `${name}-${standort}-${time ?? ""}`}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:rounded-none sm:border-0 sm:bg-transparent sm:px-4 sm:py-3 sm:shadow-none"
+                    className={["grid items-center px-4 py-3", gridCols].join(" ")}
                   >
-                    <div className="flex items-start justify-between sm:hidden">
-                      <div>
-                        <div className="text-xs text-slate-500">{standort}</div>
-                        <div className="text-sm font-medium text-slate-900">{name}</div>
-                        {time && <div className="text-xs text-slate-400">{time}</div>}
-                      </div>
-                      <span className={badgeClass}>{status.label}</span>
-                    </div>
-
-                    <div className="hidden sm:grid sm:grid-cols-[140px_1fr_140px] sm:items-center">
+                    {showStandort && (
                       <div>
                         <span className="inline-flex items-center rounded-full bg-slate-900/10 px-3 py-1 text-xs font-semibold text-slate-700">
                           {standort}
                         </span>
                       </div>
-                      <div className="text-sm font-medium text-slate-900">
-                        {name}
-                        {time && <span className="ml-2 text-xs text-slate-400">• {time}</span>}
-                      </div>
+                    )}
+                    <div className="text-sm font-medium text-slate-900">
+                      {name}
+                      {time && <span className="ml-2 text-xs text-slate-400">• {time}</span>}
+                    </div>
                       <div className="text-right">
                         <span className={badgeClass}>{status.label}</span>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>

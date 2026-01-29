@@ -136,7 +136,16 @@ export default function App() {
   return (
     <>
       <Header />
-      <AppShell active={active} onChange={setActive} userName={userName}>
+      <AppShell
+        active={active}
+        onChange={(id) => {
+          setActive(id);
+          if (id === "time") refreshAll();
+          if (id === "projects") loadProjects();
+          if (id === "status") loadStatus();
+        }}
+        userName={userName}
+      >
         {active === "time" && (
           <TimeTracer
             todayKey={todayKey}

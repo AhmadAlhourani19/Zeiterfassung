@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import type { StempeluhrEntry } from "../api/types";
-import { bookingLabel } from "../api/grouping";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
 import { createPunch, getUserStatusLookup, updatePunchStatus } from "../api/domino";
 
@@ -25,15 +24,15 @@ export function TimeTracer({
   onProjectUsed: (p: string) => void;
 }) {
   const latest = useMemo(() => latestEntry(todayEntries), [todayEntries]);
-  const isCheckedIn = !!latest && latest.Buchungstyp === "0"; // last was Anmeldung => currently in
+  const statusType = latest?.Buchungstyp ?? null;
+  const isCheckedIn = statusType === "0";
+  const isOnBreak = statusType === "2";
 
   const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date()), [todayEntries]);
-  const { workMinutes, breakMinutes, requiredBreak, missingBreak, netMinutes } = useMemo(
+  const { breakMinutes, netMinutes } = useMemo(
     () => calcWorkAndBreak(intervals),
     [intervals]
   );
-  const breakInfo =
-    "Nach ArbZG werden Mindestpausen abgezogen, auch wenn sie nicht gestempelt wurden.";
 
   const [projekt, setProjekt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,7 +55,7 @@ export function TimeTracer({
     };
   }, []);
 
-  async function updateStatus(type: "0" | "1", project: string) {
+  async function updateStatus(type: "0" | "1" | "2", project: string) {
     const cleanedProject = project.trim() || latest?.Projekt?.trim() || "";
     let unid = statusUnid;
     if (!unid) {
@@ -66,7 +65,7 @@ export function TimeTracer({
     }
     if (!unid) return;
     const payload: {
-      Buchungstyp: "0" | "1";
+      Buchungstyp: "0" | "1" | "2";
       Zeit: string;
       Projekt?: string;
       Projektname?: string;
@@ -86,7 +85,7 @@ export function TimeTracer({
     await updatePunchStatus(unid, payload);
   }
 
-  async function doPunch(type: "0" | "1") {
+  async function doPunch(type: "0" | "1" | "2") {
     setBusy(true);
     setErr(null);
     try {
@@ -112,41 +111,28 @@ export function TimeTracer({
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div>
+          <div className="order-last md:order-first">
             <div className="text-sm text-slate-500">Heute</div>
             <div className="mt-1 text-2xl font-semibold">{todayKey}</div>
             <div className="mt-2 text-sm text-slate-600">
               Status:{" "}
               <span className="font-semibold">
-                {isCheckedIn ? "Eingestempelt" : "Ausgestempelt"}
+                {isCheckedIn ? "Eingestempelt" : isOnBreak ? "In der Pause" : "Ausgestempelt"}
               </span>
               {latest && (
-                <>
-                  {" "}• Letzte Buchung:{" "}
-                  <span className="font-medium">{bookingLabel(latest.Buchungstyp)}</span>{" "}
-                  um <span className="font-medium">{new Date(latest.Zeit).toLocaleTimeString()}</span>
-                </>
+                <span className="text-slate-500">
+                  {" "}• {new Date(latest.Zeit).toLocaleTimeString()}
+                </span>
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <Stat
-                title="Arbeitszeit (netto)"
-                value={fmtHM(netMinutes)}
-                highlight={missingBreak > 0}
-              />
-              <div className="relative group">
-                <Stat title="Pausen genommen" value={fmtHM(breakMinutes)} />
-                <div className="pointer-events-none absolute left-2 top-full hidden w-64 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-lg group-hover:block">
-                  {breakInfo}
-                </div>
-              </div>
-              <Stat title="Arbeitszeit (brutto)" value={fmtHM(workMinutes)} />
-              <Stat title="Pause erforderlich" value={fmtHM(requiredBreak)} />
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Stat title="Arbeitszeit (netto)" value={fmtHM(netMinutes)} />
+              <Stat title="Pausen genommen" value={fmtHM(breakMinutes)} />
             </div>
-          </div>
+          </div>    
 
-          <div className="w-full md:w-[360px]">
+          <div className="w-full md:w-[360px] order-first md:order-last">
             <label className="text-xs text-slate-500">Projekt (optional)</label>
             <input
               value={projekt}
@@ -157,12 +143,12 @@ export function TimeTracer({
 
             {projectSuggestions.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {projectSuggestions.slice(0, 8).map((p) => (
+                {projectSuggestions.slice(0, 10).map((p) => (
                   <button
                     key={p}
                     onClick={() => setProjekt(p)}
-                    className="rounded-full bg-slate-100 hover:bg-slate-200 px-3 py-1 text-xs text-slate-700"
-                    title="Projekt übernehmen"
+                    className="max-w-[220px] truncate rounded-full bg-slate-100 hover:bg-slate-200 px-3 py-1 text-xs text-slate-700"
+                    title={p}
                   >
                     {p}
                   </button>
@@ -171,7 +157,7 @@ export function TimeTracer({
             )}
 
             <div className="mt-4 flex flex-col gap-2">
-              {!isCheckedIn ? (
+              {!isCheckedIn && !isOnBreak ? (
                 <button
                   disabled={busy || loading}
                   onClick={() => doPunch("0")}
@@ -179,6 +165,23 @@ export function TimeTracer({
                 >
                   {busy ? "Speichern…" : "Anmelden"}
                 </button>
+              ) : isOnBreak ? (
+                <>
+                  <button
+                    disabled={busy || loading}
+                    onClick={() => doPunch("0")}
+                    className="rounded-2xl bg-emerald-600 text-white px-5 py-3 text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {busy ? "Speichern…" : "Pause beenden"}
+                  </button>
+                  <button
+                    disabled={busy || loading}
+                    onClick={() => doPunch("1")}
+                    className="rounded-2xl bg-rose-600 text-white px-5 py-3 text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+                  >
+                    {busy ? "Speichern…" : "Abmelden"}
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -192,10 +195,18 @@ export function TimeTracer({
 
                   <button
                     disabled={busy || loading}
+                    onClick={() => doPunch("2")}
+                    className="rounded-2xl bg-amber-500 text-white px-5 py-3 text-sm font-semibold hover:bg-amber-600 disabled:opacity-60"
+                  >
+                    {busy ? "Speichern…" : "Pause"}
+                  </button>
+
+                  <button
+                    disabled={busy || loading}
                     onClick={() => doPunch("1")}
                     className="rounded-2xl bg-rose-600 text-white px-5 py-3 text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
                   >
-                    {busy ? "Speichern…" : "Abmelden / Pause"}
+                    {busy ? "Speichern…" : "Abmelden"}
                   </button>
                 </>
               )}

@@ -5,7 +5,7 @@ export type StempeluhrEntry = {
 
   Key: string;
   Zeit: string;          // ISO string
-  Buchungstyp: "0" | "1"; // "0" Anmeldung, "1" Abmeldung
+  Buchungstyp: "0" | "1" | "2"; // "0" Anmeldung, "1" Abmeldung, "2" Pause
   Projekt: string;
 };
 

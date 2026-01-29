@@ -44,12 +44,14 @@ export function getDisplayUserFromKey(key: string) {
   return cn ?? key;
 }
 
-export function bookingLabel(bt: "0" | "1") {
-  return bt === "0" ? "Anmeldung" : "Abmeldung";
+export function bookingLabel(bt: "0" | "1" | "2") {
+  if (bt === "0") return "Anmeldung";
+  if (bt === "2") return "Pause";
+  return "Abmeldung";
 }
 
-export function bookingBadgeClasses(bt: "0" | "1") {
-  return bt === "0"
-    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-    : "bg-rose-50 text-rose-700 ring-rose-200";
+export function bookingBadgeClasses(bt: "0" | "1" | "2") {
+  if (bt === "0") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  if (bt === "2") return "bg-amber-50 text-amber-700 ring-amber-200";
+  return "bg-rose-50 text-rose-700 ring-rose-200";
 }

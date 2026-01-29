@@ -105,7 +105,7 @@ export function getDay(keyDDMMYYYY: string) {
   );
 }
 
-export function createPunch(payload: { Buchungstyp: "0" | "1"; Projekt: string }) {
+export function createPunch(payload: { Buchungstyp: "0" | "1" | "2"; Projekt: string }) {
   return http<unknown>(`${BASE}/Dokument?form=Stempeluhr`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -137,7 +137,7 @@ export function deleteProject(unid: string, deletedAt = formatDeletionTimestamp(
 export function updatePunchStatus(
   unid: string,
   payload: {
-    Buchungstyp: "0" | "1";
+    Buchungstyp: "0" | "1" | "2";
     Zeit: string;
     Projekt?: string;
     Projektname?: string;
