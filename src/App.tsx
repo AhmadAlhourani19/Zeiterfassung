@@ -15,6 +15,21 @@ function currentKeys() {
   return { todayKey: formatDDMMYYYY(now), monthKey: formatMMYYYY(now) };
 }
 
+function getAuthErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) return null;
+  const msg = error.message.toLowerCase();
+  if (
+    msg.includes("login/redirect") ||
+    msg.includes("http 401") ||
+    msg.includes("http 403") ||
+    msg.includes("unauthorized") ||
+    msg.includes("forbidden")
+  ) {
+    return "Sie sind nicht angemeldet. Bitte melden Sie sich an.";
+  }
+  return null;
+}
+
 export default function App() {
   const { todayKey, monthKey } = useMemo(currentKeys, []);
   const [active, setActive] = useState<NavId>("time");
@@ -31,6 +46,8 @@ export default function App() {
   const [statusEntries, setStatusEntries] = useState<StatusEntry[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const projectSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -58,6 +75,14 @@ export default function App() {
       const data = await getDay(todayKey);
       data.sort((a, b) => +new Date(b.Zeit) - +new Date(a.Zeit));
       setTodayEntries(data);
+      setAuthError(null);
+    } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setAuthError(authMessage);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoadingToday(false);
     }
@@ -69,6 +94,14 @@ export default function App() {
       const data = await getMonth(monthKey);
       data.sort((a, b) => +new Date(b.Zeit) - +new Date(a.Zeit));
       setMonthEntries(data);
+      setAuthError(null);
+    } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setAuthError(authMessage);
+      } else {
+        console.error(e);
+      }
     } finally {
       setLoadingMonth(false);
     }
@@ -85,7 +118,15 @@ export default function App() {
     try {
       const data = await getProjects();
       setProjects(Array.isArray(data) ? data : []);
+      setAuthError(null);
     } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setProjects([]);
+        setProjectsError(authMessage);
+        setAuthError(authMessage);
+        return;
+      }
       const message = e instanceof Error ? e.message : "Projekte konnten nicht geladen werden";
       setProjects([]);
       setProjectsError(message || "Projekte konnten nicht geladen werden");
@@ -100,7 +141,15 @@ export default function App() {
     try {
       const data = await getCurrentStatus();
       setStatusEntries(Array.isArray(data) ? data : []);
+      setAuthError(null);
     } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setStatusEntries([]);
+        setStatusError(authMessage);
+        setAuthError(authMessage);
+        return;
+      }
       const message = e instanceof Error ? e.message : "Status konnte nicht geladen werden";
       setStatusEntries([]);
       setStatusError(message || "Status konnte nicht geladen werden");
@@ -136,6 +185,13 @@ export default function App() {
   return (
     <>
       <Header />
+      {authError && (
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mt-4 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            {authError}
+          </div>
+        </div>
+      )}
       <AppShell
         active={active}
         onChange={(id) => {

@@ -27,6 +27,16 @@ export function TimeTracer({
   const statusType = latest?.Buchungstyp ?? null;
   const isCheckedIn = statusType === "0";
   const isOnBreak = statusType === "2";
+  const statusLabel = isCheckedIn ? "Eingestempelt" : isOnBreak ? "In der Pause" : "Ausgestempelt";
+  const statusBadgeClass = [
+    "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
+    isCheckedIn
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : isOnBreak
+      ? "bg-amber-50 text-amber-700 ring-amber-200"
+      : "bg-slate-100 text-slate-700 ring-slate-200",
+  ].join(" ");
+  const latestProject = latest?.Projekt?.trim() || "";
 
   const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date()), [todayEntries]);
   const { breakMinutes, netMinutes } = useMemo(
@@ -94,7 +104,6 @@ export function TimeTracer({
       try {
         await updateStatus(type, trimmed);
       } catch {
-        // ignore status update errors for now
       }
       if (projekt.trim()) onProjectUsed(projekt.trim());
       setProjekt("");
@@ -116,15 +125,21 @@ export function TimeTracer({
             <div className="mt-1 text-2xl font-semibold">{todayKey}</div>
             <div className="mt-2 text-sm text-slate-600">
               Status:{" "}
-              <span className="font-semibold">
-                {isCheckedIn ? "Eingestempelt" : isOnBreak ? "In der Pause" : "Ausgestempelt"}
-              </span>
+              <span className={statusBadgeClass}>{statusLabel}</span>
               {latest && (
                 <span className="text-slate-500">
                   {" "}• {new Date(latest.Zeit).toLocaleTimeString()}
                 </span>
               )}
             </div>
+            {latestProject && (
+              <div className="mt-2 text-sm text-slate-600">
+                Projekt:{" "}
+                <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200">
+                  {latestProject}
+                </span>
+              </div>
+            )}
 
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Stat title="Arbeitszeit (netto)" value={fmtHM(netMinutes)} />
