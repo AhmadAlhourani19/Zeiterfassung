@@ -20,6 +20,7 @@ function getErrorMessage(e: unknown, fallback: string) {
 
 export function Projects({ projects, loading, error, onReload }: Props) {
   const [value, setValue] = useState("");
+  const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -34,6 +35,13 @@ export function Projects({ projects, loading, error, onReload }: Props) {
       ),
     [visible]
   );
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return sorted;
+    return sorted.filter((item) =>
+      (item.Projektname ?? "").toLowerCase().includes(query)
+    );
+  }, [search, sorted]);
 
   async function add() {
     const v = value.trim();
@@ -74,11 +82,18 @@ export function Projects({ projects, loading, error, onReload }: Props) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Projekte</h2>
         <button
+          type="button"
           onClick={() => void onReload()}
           disabled={loading || busy}
-          className="rounded-2xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Aktualisieren"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Aktualisieren
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 0 1 15.2-6.4" />
+            <path d="M21 12a9 9 0 0 1-15.2 6.4" />
+            <path d="M3 4v5h5" />
+            <path d="M21 20v-5h-5" />
+          </svg>
         </button>
       </div>
       <p className="mt-1 text-sm text-slate-500">
@@ -116,13 +131,24 @@ export function Projects({ projects, loading, error, onReload }: Props) {
         </button>
       </div>
 
+      <div className="mt-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Projekt suchen..."
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+        />
+      </div>
+
       <div className="mt-4 space-y-2">
         {loading && <div className="text-sm text-slate-500">Lade Projekte...</div>}
 
-        {!loading && sorted.length === 0 ? (
-          <div className="text-sm text-slate-500">Noch keine Projekte.</div>
+        {!loading && filtered.length === 0 ? (
+          <div className="text-sm text-slate-500">
+            {search.trim() ? "Keine Treffer." : "Noch keine Projekte."}
+          </div>
         ) : (
-          sorted.map((item) => (
+          filtered.map((item) => (
             <div
               key={item["@unid"]}
               className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"

@@ -1,6 +1,53 @@
-import type { ProjectEntry, StatusEntry, StempeluhrEntry, UserStatusLookup } from "./types";
+import type {
+  ProjectEntry,
+  ProjectPicklistEntry,
+  StatusEntry,
+  StempeluhrEntry,
+  UserStatusLookup,
+} from "./types";
 
-const BASE = "https://domino.hoecker-pm.com/dev/pmzeiterfassung.nsf/rest.xsp";
+const BASE = import.meta.env.DEV
+  ? "https://domino.hoecker-pm.com/dev/pmzeiterfassung.nsf/rest.xsp"
+  : "/dev/pmzeiterfassung.nsf/rest.xsp";
+
+const AUTH_ERROR_PREFIX = "AUTH_REQUIRED";
+
+function createAuthError(detail?: string) {
+  const suffix = detail ? `: ${detail}` : "";
+  return new Error(`${AUTH_ERROR_PREFIX}${suffix}`);
+}
+
+function looksLikeLoginPage(text: string) {
+  const sample = text.slice(0, 700).toLowerCase();
+  const hasPasswordField = sample.includes("password");
+  const hasLoginHint =
+    sample.includes("login") ||
+    sample.includes("log in") ||
+    sample.includes("anmeldung") ||
+    sample.includes("username") ||
+    sample.includes("benutzer");
+  return hasPasswordField && hasLoginHint;
+}
+
+function isLikelyAuthFailure(res: Response, contentType: string, text: string) {
+  if (res.status === 401 || res.status === 403) return true;
+
+  const ct = contentType.toLowerCase();
+  if (!ct.includes("text/html")) return false;
+
+  const responseUrl = res.url.toLowerCase();
+  const redirectedToLogin =
+    res.redirected &&
+    (responseUrl.includes("login") ||
+      responseUrl.includes("names.nsf") ||
+      responseUrl.includes("domcfg.nsf"));
+
+  return redirectedToLogin || looksLikeLoginPage(text);
+}
+
+export function isAuthError(error: unknown) {
+  return error instanceof Error && error.message.startsWith(AUTH_ERROR_PREFIX);
+}
 
 function extractCharset(contentType: string) {
   const match = contentType.match(/charset=([^;]+)/i);
@@ -60,8 +107,12 @@ async function http<T>(url: string, options?: RequestInit): Promise<T> {
   });
 
   const ct = res.headers.get("content-type") ?? "";
+  const normalizedCt = ct.toLowerCase();
   const text = await readText(res);
-  if (!ct.includes("application/json")) {
+  if (!normalizedCt.includes("application/json")) {
+    if (isLikelyAuthFailure(res, ct, text)) {
+      throw createAuthError();
+    }
     throw new Error(
       `Expected JSON but got ${ct || "unknown"}. (Maybe login/redirect)\n` +
         text.slice(0, 160)
@@ -69,6 +120,9 @@ async function http<T>(url: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw createAuthError(`HTTP ${res.status}`);
+    }
     throw new Error(`HTTP ${res.status} ${res.statusText} - ${text}`);
   }
 
@@ -114,6 +168,10 @@ export function createPunch(payload: { Buchungstyp: "0" | "1" | "2"; Projekt: st
 
 export function getProjects() {
   return http<ProjectEntry[]>(`${BASE}/Projekte`);
+}
+
+export function getProjectPicklist() {
+  return http<ProjectPicklistEntry[]>(`${BASE}/ProjektnamePicklist`);
 }
 
 export function createProject(payload: { Projektname: string }) {

@@ -45,6 +45,26 @@ export type StatusEntry = {
   }>;
 };
 
+export type ProjectPicklistEntry = {
+  "@entryid"?: string;
+  "@unid"?: string;
+  "@form"?: string;
+
+  Projektnummer?: string;
+  ProjektNummer?: string;
+  ProjektNr?: string;
+  Projektnr?: string;
+  Projektname?: string;
+  ProjektName?: string;
+  entrydata?: Array<{
+    "@name"?: string;
+    name?: string;
+    text?: unknown;
+    value?: unknown;
+    values?: unknown;
+  }>;
+};
+
 export type UserStatusLookup = {
   effectiveName?: string;
   commonName?: string;

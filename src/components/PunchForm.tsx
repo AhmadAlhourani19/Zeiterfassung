@@ -18,8 +18,9 @@ export function PunchForm({ onCreated }: Props) {
       await createPunch({ Buchungstyp: buchungstyp, Projekt: projekt });
       setProjekt("");
       onCreated?.();
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to create punch");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Failed to create punch";
+      setError(message);
     } finally {
       setLoading(false);
     }

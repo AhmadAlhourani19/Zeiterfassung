@@ -6,8 +6,16 @@ import { TimeTracer } from "./pages/TimeTracer";
 import { Projects } from "./pages/Projects";
 import { Reports } from "./pages/Reports";
 import { Status } from "./pages/Status";
-import { createProject, getCurrentStatus, getDay, getMonth, getProjects } from "./api/domino";
-import type { ProjectEntry, StatusEntry, StempeluhrEntry } from "./api/types";
+import {
+  createProject,
+  getCurrentStatus,
+  getDay,
+  getMonth,
+  getProjectPicklist,
+  getProjects,
+  isAuthError,
+} from "./api/domino";
+import type { ProjectEntry, ProjectPicklistEntry, StatusEntry, StempeluhrEntry } from "./api/types";
 import { formatDDMMYYYY, formatMMYYYY, getDisplayUserFromKey } from "./api/grouping";
 
 function currentKeys() {
@@ -16,10 +24,12 @@ function currentKeys() {
 }
 
 function getAuthErrorMessage(error: unknown) {
+  if (isAuthError(error)) {
+    return "Sie sind nicht angemeldet. Bitte melden Sie sich an.";
+  }
   if (!(error instanceof Error)) return null;
   const msg = error.message.toLowerCase();
   if (
-    msg.includes("login/redirect") ||
     msg.includes("http 401") ||
     msg.includes("http 403") ||
     msg.includes("unauthorized") ||
@@ -28,6 +38,75 @@ function getAuthErrorMessage(error: unknown) {
     return "Sie sind nicht angemeldet. Bitte melden Sie sich an.";
   }
   return null;
+}
+
+function extractText(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const text = extractText(item);
+      if (text) return text;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const direct =
+      extractText(obj.text) ||
+      extractText(obj.value) ||
+      extractText(obj.values) ||
+      extractText(obj["#text"]);
+    return direct ?? null;
+  }
+  return null;
+}
+
+function findValueInEntryData(
+  entry: Pick<ProjectPicklistEntry, "entrydata">,
+  matcher: (key: string) => boolean
+) {
+  if (!Array.isArray(entry.entrydata)) return null;
+  for (const item of entry.entrydata) {
+    const name = item["@name"] ?? item.name ?? "";
+    if (!name) continue;
+    if (matcher(name)) {
+      const text = extractText(item.text ?? item.value ?? item.values);
+      if (text) return text;
+    }
+  }
+  return null;
+}
+
+function getPicklistField(
+  entry: ProjectPicklistEntry,
+  keys: string[],
+  matcher: (key: string) => boolean
+) {
+  for (const key of keys) {
+    const text = extractText(entry[key as keyof ProjectPicklistEntry]);
+    if (text) return text.trim();
+  }
+  const fromEntryData = findValueInEntryData(entry, matcher);
+  return fromEntryData?.trim() || null;
+}
+
+function buildProjectLabel(entry: ProjectPicklistEntry) {
+  const nummer = getPicklistField(
+    entry,
+    ["Projektnummer", "ProjektNummer", "ProjektNr", "Projektnr"],
+    (key) => {
+      const norm = key.toLowerCase();
+      return norm === "projektnummer" || norm === "projektnr" || norm === "projekt-nr" || norm === "projekt_nr";
+    }
+  );
+  const name = getPicklistField(
+    entry,
+    ["Projektname", "ProjektName"],
+    (key) => key.toLowerCase().includes("projektname")
+  );
+  if (nummer && name) return `${nummer} ${name}`;
+  return name || nummer || null;
 }
 
 export default function App() {
@@ -43,26 +122,42 @@ export default function App() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
+  const [projectLookup, setProjectLookup] = useState<ProjectPicklistEntry[]>([]);
+  const [loadingProjectLookup, setLoadingProjectLookup] = useState(false);
+
   const [statusEntries, setStatusEntries] = useState<StatusEntry[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const [authError, setAuthError] = useState<string | null>(null);
+  const hasProjectLookup = projectLookup.length > 0;
 
   const projectSuggestions = useMemo(() => {
     const seen = new Set<string>();
     const list: string[] = [];
-    for (const item of projects) {
-      if (item.Dokumentgeloescht) continue;
-      const name = (item.Projektname ?? "").trim();
-      if (!name) continue;
-      const key = name.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      list.push(name);
+    if (hasProjectLookup) {
+      for (const item of projectLookup) {
+        const label = buildProjectLabel(item);
+        if (!label) continue;
+        const key = label.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(label);
+      }
+    } else {
+      for (const item of projects) {
+        if (item.Dokumentgeloescht) continue;
+        const name = (item.Projektname ?? "").trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(name);
+      }
     }
+    list.sort((a, b) => a.localeCompare(b));
     return list;
-  }, [projects]);
+  }, [hasProjectLookup, projectLookup, projects]);
 
   const userName = useMemo(() => {
     const first = todayEntries[0] ?? monthEntries[0];
@@ -135,6 +230,25 @@ export default function App() {
     }
   }
 
+  async function loadProjectLookup() {
+    setLoadingProjectLookup(true);
+    try {
+      const data = await getProjectPicklist();
+      setProjectLookup(Array.isArray(data) ? data : []);
+      setAuthError(null);
+    } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setProjectLookup([]);
+        setAuthError(authMessage);
+        return;
+      }
+      console.error(e);
+    } finally {
+      setLoadingProjectLookup(false);
+    }
+  }
+
   async function loadStatus() {
     setLoadingStatus(true);
     setStatusError(null);
@@ -178,6 +292,7 @@ export default function App() {
   useEffect(() => {
     refreshAll();
     loadProjects();
+    loadProjectLookup();
     loadStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -196,7 +311,10 @@ export default function App() {
         active={active}
         onChange={(id) => {
           setActive(id);
-          if (id === "time") refreshAll();
+          if (id === "time") {
+            refreshAll();
+            if (!hasProjectLookup && !loadingProjectLookup) loadProjectLookup();
+          }
           if (id === "projects") loadProjects();
           if (id === "status") loadStatus();
         }}
@@ -210,7 +328,9 @@ export default function App() {
             onRefresh={refreshAll}
             projectSuggestions={projectSuggestions}
             onProjectUsed={(p) => {
-              void ensureProject(p);
+              if (!hasProjectLookup) {
+                void ensureProject(p);
+              }
             }}
           />
         )}

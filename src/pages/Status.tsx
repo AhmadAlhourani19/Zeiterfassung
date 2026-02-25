@@ -105,8 +105,8 @@ export function Status({ entries, loading, error, onReload }: Props) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const showStandort = standortFilter === "Alle";
   const gridCols = showStandort
-    ? "grid-cols-[110px_1fr_110px] sm:grid-cols-[140px_1fr_140px]"
-    : "grid-cols-[1fr_110px] sm:grid-cols-[1fr_140px]";
+    ? "grid-cols-[1fr_100px] sm:grid-cols-[140px_1fr_140px]"
+    : "grid-cols-[1fr_100px] sm:grid-cols-[1fr_140px]";
 
   const standorte = useMemo(() => {
     const set = new Set<string>();
@@ -122,9 +122,10 @@ export function Status({ entries, loading, error, onReload }: Props) {
       const status = getStatus(entry);
       const name = getName(entry);
       const standort = getStandort(entry);
+      const project = getProject(entry);
       const time = formatTime(entry.Zeit);
       const rank = status.label.toLowerCase().includes("online") ? 0 : 1;
-      return { entry, status, name, standort, time, rank };
+      return { entry, status, name, standort, project, time, rank };
     });
 
     return mapped.sort((a, b) => {
@@ -191,7 +192,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
         <div className="mt-4 overflow-x-auto pb-2">
           <div className="min-w-0 sm:min-w-[520px] rounded-2xl border border-slate-200">
             <div className={["grid bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500", gridCols].join(" ")}>
-              {showStandort && <div>Standort</div>}
+              {showStandort && <div className="hidden sm:block">Standort</div>}
               <button
                 type="button"
                 onClick={() => {
@@ -238,7 +239,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
                   Keine Statusdaten vorhanden.
                 </div>
               ) : (
-                filtered.map(({ entry, status, name, standort, time }) => {
+                filtered.map(({ entry, status, name, standort, project, time }) => {
                   const badgeClass = [
                     "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1",
                     status.tone === "emerald"
@@ -254,14 +255,22 @@ export function Status({ entries, loading, error, onReload }: Props) {
                     className={["grid items-center px-4 py-3", gridCols].join(" ")}
                   >
                     {showStandort && (
-                      <div>
+                      <div className="hidden sm:block">
                         <span className="inline-flex items-center rounded-full bg-slate-900/10 px-3 py-1 text-xs font-semibold text-slate-700">
                           {standort}
                         </span>
                       </div>
                     )}
                     <div className="text-sm font-medium text-slate-900">
+                      {showStandort && (
+                        <div className="mb-1 sm:hidden">
+                          <span className="inline-flex items-center rounded-full bg-slate-900/10 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                            {standort}
+                          </span>
+                        </div>
+                      )}
                       {name}
+                      {project && <div className="mt-1 text-xs text-slate-500">{project}</div>}
                       {time && <span className="ml-2 text-xs text-slate-400">• {time}</span>}
                     </div>
                       <div className="text-right">
@@ -278,3 +287,4 @@ export function Status({ entries, loading, error, onReload }: Props) {
     </div>
   );
 }
+

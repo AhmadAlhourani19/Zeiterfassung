@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getDay, getMonth } from "../api/domino";
 import type { StempeluhrEntry } from "../api/types";
 import { PunchTable } from "../components/PunchTable";
@@ -59,39 +59,41 @@ export default function Dashboard() {
   const onlyUser = useMemo(() => Object.keys(monthGrouped)[0] ?? null, [monthGrouped]);
   const groupedDays = useMemo(() => (onlyUser ? monthGrouped[onlyUser] ?? {} : {}), [monthGrouped, onlyUser]);
 
-  async function loadMonth() {
+  const loadMonth = useCallback(async () => {
     setLoadingMonth(true);
     setError(null);
     try {
       const data = await getMonth(currentMonthKey);
       setMonthEntries(data);
-    } catch (e: any) {
-      setError(e?.message ?? "Monat konnte nicht geladen werden");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Monat konnte nicht geladen werden";
+      setError(message);
       setMonthEntries([]);
     } finally {
       setLoadingMonth(false);
     }
-  }
+  }, [currentMonthKey]);
 
-  async function loadToday() {
+  const loadToday = useCallback(async () => {
     setLoadingToday(true);
     setError(null);
     try {
       const data = await getDay(todayKey);
       data.sort((a, b) => +new Date(b.Zeit) - +new Date(a.Zeit));
       setTodayEntries(data);
-    } catch (e: any) {
-      setError(e?.message ?? "Heute konnte nicht geladen werden");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Heute konnte nicht geladen werden";
+      setError(message);
       setTodayEntries([]);
     } finally {
       setLoadingToday(false);
     }
-  }
+  }, [todayKey]);
 
   useEffect(() => {
-    loadMonth();
-    loadToday();
-  }, []);
+    void loadMonth();
+    void loadToday();
+  }, [loadMonth, loadToday]);
 
   function handleExportToday() {
     if (!todayEntries.length) return;

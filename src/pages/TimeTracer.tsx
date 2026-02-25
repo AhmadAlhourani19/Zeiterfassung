@@ -48,6 +48,13 @@ export function TimeTracer({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [statusUnid, setStatusUnid] = useState<string | null>(null);
+  const filteredSuggestions = useMemo(() => {
+    const query = projekt.trim().toLowerCase();
+    if (!query) return [];
+    return projectSuggestions
+      .filter((p) => p.toLowerCase().includes(query))
+      .slice(0, 10);
+  }, [projekt, projectSuggestions]);
 
   useEffect(() => {
     let mounted = true;
@@ -103,7 +110,8 @@ export function TimeTracer({
       await createPunch({ Buchungstyp: type, Projekt: trimmed });
       try {
         await updateStatus(type, trimmed);
-      } catch {
+      } catch (error) {
+        console.warn("Status update failed after punch creation", error);
       }
       if (projekt.trim()) onProjectUsed(projekt.trim());
       setProjekt("");
@@ -156,9 +164,9 @@ export function TimeTracer({
               className="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
             />
 
-            {projectSuggestions.length > 0 && (
+            {filteredSuggestions.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {projectSuggestions.slice(0, 10).map((p) => (
+                {filteredSuggestions.map((p) => (
                   <button
                     key={p}
                     onClick={() => setProjekt(p)}
@@ -169,6 +177,9 @@ export function TimeTracer({
                   </button>
                 ))}
               </div>
+            )}
+            {projekt.trim() && filteredSuggestions.length === 0 && (
+              <div className="mt-2 text-xs text-slate-500">Keine Treffer.</div>
             )}
 
             <div className="mt-4 flex flex-col gap-2">

@@ -37,8 +37,9 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
       });
       setProjekt("");
       onPunched();
-    } catch (e: any) {
-      setError(e?.message ?? "Buchung fehlgeschlagen");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Buchung fehlgeschlagen";
+      setError(message);
     } finally {
       setLoadingAction(null);
     }
