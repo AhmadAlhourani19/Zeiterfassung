@@ -4,6 +4,7 @@ import type { ProjectEntry } from "../api/types";
 
 type Props = {
   projects: ProjectEntry[];
+  lookupProjects?: string[];
   loading: boolean;
   error?: string | null;
   onReload: () => Promise<void>;
@@ -18,7 +19,7 @@ function getErrorMessage(e: unknown, fallback: string) {
   return fallback;
 }
 
-export function Projects({ projects, loading, error, onReload }: Props) {
+export function Projects({ projects, lookupProjects = [], loading, error, onReload }: Props) {
   const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,18 +36,53 @@ export function Projects({ projects, loading, error, onReload }: Props) {
       ),
     [visible]
   );
-  const filtered = useMemo(() => {
+  const removableByName = useMemo(() => {
+    const map = new Map<string, ProjectEntry>();
+    for (const item of sorted) {
+      const name = (item.Projektname ?? "").trim();
+      if (!name) continue;
+      const key = normalizeName(name);
+      if (!map.has(key)) map.set(key, item);
+    }
+    return map;
+  }, [sorted]);
+  const allProjectNames = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+
+    for (const item of sorted) {
+      const name = (item.Projektname ?? "").trim();
+      if (!name) continue;
+      const key = normalizeName(name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(name);
+    }
+
+    for (const name of lookupProjects) {
+      const trimmed = name.trim();
+      if (!trimmed) continue;
+      const key = normalizeName(trimmed);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      names.push(trimmed);
+    }
+
+    names.sort((a, b) => a.localeCompare(b));
+    return names;
+  }, [lookupProjects, sorted]);
+  const filteredNames = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return sorted;
-    return sorted.filter((item) =>
-      (item.Projektname ?? "").toLowerCase().includes(query)
+    if (!query) return allProjectNames;
+    return allProjectNames.filter((name) =>
+      name.toLowerCase().includes(query)
     );
-  }, [search, sorted]);
+  }, [allProjectNames, search]);
 
   async function add() {
     const v = value.trim();
     if (!v) return;
-    if (sorted.some((item) => normalizeName(item.Projektname ?? "") === normalizeName(v))) {
+    if (allProjectNames.some((name) => normalizeName(name) === normalizeName(v))) {
       setValue("");
       return;
     }
@@ -143,26 +179,33 @@ export function Projects({ projects, loading, error, onReload }: Props) {
       <div className="mt-4 space-y-2">
         {loading && <div className="text-sm text-slate-500">Lade Projekte...</div>}
 
-        {!loading && filtered.length === 0 ? (
+        {!loading && filteredNames.length === 0 ? (
           <div className="text-sm text-slate-500">
             {search.trim() ? "Keine Treffer." : "Noch keine Projekte."}
           </div>
         ) : (
-          filtered.map((item) => (
+          filteredNames.map((name) => {
+            const removableItem = removableByName.get(normalizeName(name));
+            return (
             <div
-              key={item["@unid"]}
+              key={name}
               className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
             >
-              <div className="text-sm font-medium">{item.Projektname ?? "(ohne Name)"}</div>
-              <button
-                onClick={() => remove(item)}
-                disabled={busy || loading}
-                className="text-sm text-rose-700 hover:text-rose-900 disabled:opacity-60"
-              >
-                Entfernen
-              </button>
+              <div className="text-sm font-medium">{name}</div>
+              {removableItem ? (
+                <button
+                  onClick={() => remove(removableItem)}
+                  disabled={busy || loading}
+                  className="text-sm text-rose-700 hover:text-rose-900 disabled:opacity-60"
+                >
+                  Entfernen
+                </button>
+              ) : (
+                <span className="text-xs text-slate-400">Lookup</span>
+              )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

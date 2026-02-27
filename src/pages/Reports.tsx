@@ -218,8 +218,8 @@ export function Reports() {
         <h2 className="text-xl font-semibold">Berichte</h2>
         <p className="mt-1 text-sm text-slate-500">Tages- und Monatsuebersichten (nur Anzeige).</p>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold">Tagesbericht</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
@@ -235,7 +235,7 @@ export function Reports() {
                 type="date"
                 value={toInputDate(dayKey)}
                 onChange={(e) => setDayKey(fromInputDate(e.target.value))}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                className="min-w-0 w-full sm:w-auto rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
               />
               <button
                 type="button"
@@ -279,7 +279,7 @@ export function Reports() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold">Monatsbericht</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
@@ -295,7 +295,7 @@ export function Reports() {
                 type="month"
                 value={toInputMonth(monthKey)}
                 onChange={(e) => setMonthKey(fromInputMonth(e.target.value))}
-                className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                className="min-w-0 w-full sm:w-auto rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
               />
               <button
                 type="button"

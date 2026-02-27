@@ -92,6 +92,8 @@ function getPicklistField(
 }
 
 function buildProjectLabel(entry: ProjectPicklistEntry) {
+  if (entry["@category"]) return null;
+
   const nummer = getPicklistField(
     entry,
     ["Projektnummer", "ProjektNummer", "ProjektNr", "Projektnr"],
@@ -105,8 +107,9 @@ function buildProjectLabel(entry: ProjectPicklistEntry) {
     ["Projektname", "ProjektName"],
     (key) => key.toLowerCase().includes("projektname")
   );
-  if (nummer && name) return `${nummer} ${name}`;
-  return name || nummer || null;
+  if (nummer && name) return `[${nummer}] ${name}`;
+  if (nummer) return `[${nummer}]`;
+  return name || null;
 }
 
 export default function App() {
@@ -315,7 +318,10 @@ export default function App() {
             refreshAll();
             if (!hasProjectLookup && !loadingProjectLookup) loadProjectLookup();
           }
-          if (id === "projects") loadProjects();
+          if (id === "projects") {
+            loadProjects();
+            if (!hasProjectLookup && !loadingProjectLookup) loadProjectLookup();
+          }
           if (id === "status") loadStatus();
         }}
         userName={userName}
@@ -338,6 +344,7 @@ export default function App() {
         {active === "projects" && (
           <Projects
             projects={projects}
+            lookupProjects={hasProjectLookup ? projectSuggestions : []}
             loading={loadingProjects}
             error={projectsError}
             onReload={loadProjects}

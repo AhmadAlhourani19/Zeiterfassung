@@ -49,6 +49,7 @@ export type ProjectPicklistEntry = {
   "@entryid"?: string;
   "@unid"?: string;
   "@form"?: string;
+  "@category"?: boolean;
 
   Projektnummer?: string;
   ProjektNummer?: string;

@@ -171,7 +171,7 @@ export function getProjects() {
 }
 
 export function getProjectPicklist() {
-  return http<ProjectPicklistEntry[]>(`${BASE}/ProjektnamePicklist`);
+  return http<ProjectPicklistEntry[]>(`${BASE}/ProjektnamenPicklist`);
 }
 
 export function createProject(payload: { Projektname: string }) {
