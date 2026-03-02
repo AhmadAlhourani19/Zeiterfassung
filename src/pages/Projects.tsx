@@ -23,8 +23,8 @@ function getErrorMessage(e: unknown, fallback: string) {
 export function Projects({ projects, lookupProjects = [], loading, error, onReload }: Props) {
   const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
-  const [lookupSearch, setLookupSearch] = useState("");
   const [lookupOpen, setLookupOpen] = useState(false);
+  const [selectedLookup, setSelectedLookup] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -93,11 +93,9 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     return names;
   }, [lookupProjects]);
 
-  const filteredLookupNames = useMemo(() => {
-    const query = lookupSearch.trim().toLowerCase();
-    if (!query) return lookupNames;
-    return lookupNames.filter((name) => name.toLowerCase().includes(query));
-  }, [lookupNames, lookupSearch]);
+  const selectableLookupCount = useMemo(() => {
+    return lookupNames.filter((name) => !selectedNameSet.has(normalizeName(name))).length;
+  }, [lookupNames, selectedNameSet]);
 
   async function add() {
     const v = value.trim();
@@ -129,6 +127,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     setActionError(null);
     try {
       await createProject({ Projektname: v });
+      setSelectedLookup("");
       await onReload();
     } catch (e: unknown) {
       setActionError(getErrorMessage(e, "Projekt konnte nicht erstellt werden"));
@@ -145,7 +144,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
       await deleteProject(item["@unid"]);
       await onReload();
     } catch (e: unknown) {
-      setActionError(getErrorMessage(e, "Projekt konnte nicht geloscht werden"));
+      setActionError(getErrorMessage(e, "Projekt konnte nicht geloescht werden"));
     } finally {
       setBusy(false);
     }
@@ -190,7 +189,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
 
         <div className="projects-page__add-actions">
           <button onClick={add} disabled={busy || loading} className="projects-page__add-btn">
-            Hinzufügen
+            Hinzufuegen
           </button>
           <button
             type="button"
@@ -207,46 +206,46 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
         <div className="projects-page__lookup-panel">
           <div className="projects-page__lookup-header">
             <div className="projects-page__lookup-title">Projekt Lookup</div>
-            <div className="projects-page__lookup-count">{filteredLookupNames.length} Eintraege</div>
+            <div className="projects-page__lookup-count">{selectableLookupCount} verfuegbar</div>
           </div>
 
-          <input
-            value={lookupSearch}
-            onChange={(e) => setLookupSearch(e.target.value)}
-            placeholder="Im Lookup suchen..."
-            className="projects-page__input projects-page__lookup-input"
-          />
+          {lookupNames.length === 0 ? (
+            <div className="projects-page__hint">Keine Lookup-Projekte verfuegbar.</div>
+          ) : (
+            <>
+              <div className="projects-page__lookup-select-row">
+                <select
+                  value={selectedLookup}
+                  onChange={(e) => setSelectedLookup(e.target.value)}
+                  className="projects-page__select"
+                  disabled={busy || loading}
+                >
+                  <option value="">Projekt aus Lookup waehlen...</option>
+                  {lookupNames.map((name) => {
+                    const alreadyAdded = selectedNameSet.has(normalizeName(name));
+                    return (
+                      <option key={name} value={name} disabled={alreadyAdded}>
+                        {alreadyAdded ? `${name} (bereits hinzugefuegt)` : name}
+                      </option>
+                    );
+                  })}
+                </select>
 
-          <div className="projects-page__lookup-list">
-            {lookupNames.length === 0 && (
-              <div className="projects-page__hint">Keine Lookup-Projekte verfuegbar.</div>
-            )}
+                <button
+                  type="button"
+                  onClick={() => void addFromLookup(selectedLookup)}
+                  disabled={busy || loading || !selectedLookup || selectedNameSet.has(normalizeName(selectedLookup))}
+                  className="projects-page__lookup-add-btn"
+                >
+                  Auswaehlen
+                </button>
+              </div>
 
-            {lookupNames.length > 0 && filteredLookupNames.length === 0 && (
-              <div className="projects-page__hint">Keine Treffer im Lookup.</div>
-            )}
-
-            {filteredLookupNames.map((name) => {
-              const alreadyAdded = selectedNameSet.has(normalizeName(name));
-              return (
-                <div key={name} className="projects-page__lookup-item">
-                  <div className="projects-page__lookup-name">{name}</div>
-                  {alreadyAdded ? (
-                    <span className="projects-page__lookup-state">Bereits hinzugefuegt</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void addFromLookup(name)}
-                      disabled={busy || loading}
-                      className="projects-page__lookup-add-btn"
-                    >
-                      Auswählen
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+              {selectedLookup && selectedNameSet.has(normalizeName(selectedLookup)) && (
+                <div className="projects-page__lookup-note">Dieses Projekt ist bereits hinzugefuegt.</div>
+              )}
+            </>
+          )}
         </div>
       )}
 

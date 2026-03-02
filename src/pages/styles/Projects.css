@@ -56,6 +56,10 @@
   @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
 }
 
+.projects-page__select {
+  @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+}
+
 .projects-page__add-btn {
   @apply rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-60;
 }
@@ -80,28 +84,26 @@
   @apply text-xs text-slate-500;
 }
 
-.projects-page__lookup-input {
-  @apply mt-2 bg-white;
+.projects-page__lookup-select-row {
+  @apply mt-2 flex flex-col gap-2;
 }
 
-.projects-page__lookup-list {
-  @apply mt-2 max-h-72 space-y-2 overflow-y-auto pr-1;
+@media (min-width: 768px) {
+  .projects-page__lookup-select-row {
+    @apply flex-row;
+  }
 }
 
-.projects-page__lookup-item {
-  @apply flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2;
-}
-
-.projects-page__lookup-name {
-  @apply min-w-0 truncate text-sm font-medium text-slate-800;
+.projects-page__lookup-select-row .projects-page__select {
+  @apply flex-1;
 }
 
 .projects-page__lookup-add-btn {
-  @apply shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-60;
+  @apply rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-60;
 }
 
-.projects-page__lookup-state {
-  @apply shrink-0 text-xs text-slate-500;
+.projects-page__lookup-note {
+  @apply mt-2 text-xs text-slate-500;
 }
 
 .projects-page__list {

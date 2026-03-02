@@ -147,29 +147,33 @@ export default function App() {
   const projectSuggestions = useMemo(() => {
     const seen = new Set<string>();
     const list: string[] = [];
-    if (hasProjectLookup) {
-      for (const item of projectLookup) {
-        const label = buildProjectLabel(item);
-        if (!label) continue;
-        const key = label.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        list.push(label);
-      }
-    } else {
-      for (const item of projects) {
-        if (item.Dokumentgeloescht) continue;
-        const name = (item.Projektname ?? "").trim();
-        if (!name) continue;
-        const key = name.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        list.push(name);
-      }
+    for (const item of projects) {
+      if (item.Dokumentgeloescht) continue;
+      const name = (item.Projektname ?? "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(name);
     }
     list.sort((a, b) => a.localeCompare(b));
     return list;
-  }, [hasProjectLookup, projectLookup, projects]);
+  }, [projects]);
+
+  const lookupProjectOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const item of projectLookup) {
+      const label = buildProjectLabel(item);
+      if (!label) continue;
+      const key = label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      list.push(label);
+    }
+    list.sort((a, b) => a.localeCompare(b));
+    return list;
+  }, [projectLookup]);
 
   const userName = useMemo(() => {
     const firstBooking = todayEntries[0] ?? monthEntries[0];
@@ -389,7 +393,7 @@ export default function App() {
         {active === "projects" && (
           <Projects
             projects={projects}
-            lookupProjects={hasProjectLookup ? projectSuggestions : []}
+            lookupProjects={lookupProjectOptions}
             loading={loadingProjects}
             error={projectsError}
             onReload={loadProjects}

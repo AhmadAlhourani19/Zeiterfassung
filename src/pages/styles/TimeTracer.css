@@ -88,20 +88,29 @@
   @apply text-xs text-slate-500;
 }
 
-.time-tracer__input {
-  @apply mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+.time-tracer__select-wrap {
+  @apply relative mt-1;
 }
 
-.time-tracer__suggestions {
-  @apply mt-2 flex flex-wrap gap-2;
+.time-tracer__select {
+  @apply w-full appearance-none rounded-2xl border border-slate-300 bg-white px-4 py-3 pr-10 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
 }
 
-.time-tracer__suggestion {
-  @apply max-w-[220px] truncate rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 transition hover:bg-slate-200;
+.time-tracer__select:hover {
+  @apply border-slate-400;
 }
 
-.time-tracer__no-results {
-  @apply mt-2 text-xs text-slate-500;
+.time-tracer__select-arrow {
+  @apply pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500;
+}
+
+.time-tracer__select-hint {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.time-tracer__select option {
+  background: #ffffff;
+  color: #0f172a;
 }
 
 .time-tracer__actions {
@@ -151,4 +160,3 @@
 .time-tracer__stat-hint {
   @apply mt-1 text-xs text-slate-600;
 }
-

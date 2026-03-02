@@ -3,6 +3,7 @@ import type { StempeluhrEntry } from "../api/types";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
 import { createPunch, getUserStatusLookup, updatePunchStatus } from "../api/domino";
 import "./styles/TimeTracer.css";
+import { MdOutlineExpandMore } from "react-icons/md";
 
 function latestEntry(entries: StempeluhrEntry[]) {
   if (!entries.length) return null;
@@ -46,12 +47,6 @@ export function TimeTracer({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [statusUnid, setStatusUnid] = useState<string | null>(null);
-
-  const filteredSuggestions = useMemo(() => {
-    const query = projekt.trim().toLowerCase();
-    if (!query) return [];
-    return projectSuggestions.filter((p) => p.toLowerCase().includes(query)).slice(0, 10);
-  }, [projekt, projectSuggestions]);
 
   useEffect(() => {
     let mounted = true;
@@ -112,7 +107,7 @@ export function TimeTracer({
       } catch (error) {
         console.warn("Status update failed after punch creation", error);
       }
-      if (projekt.trim()) onProjectUsed(projekt.trim());
+      if (trimmed) onProjectUsed(trimmed);
       setProjekt("");
       onRefresh();
     } catch (e: unknown) {
@@ -134,7 +129,7 @@ export function TimeTracer({
             <div className="time-tracer__status-row">
               <span>Status: </span>
               <span className={statusBadgeClass}>{statusLabel}</span>
-              {latest && <span className="time-tracer__status-time">• {new Date(latest.Zeit).toLocaleTimeString()}</span>}
+              {latest && <span className="time-tracer__status-time"> | {new Date(latest.Zeit).toLocaleTimeString()}</span>}
             </div>
 
             {latestProject && (
@@ -152,25 +147,26 @@ export function TimeTracer({
 
           <div className="time-tracer__actions-panel">
             <label className="time-tracer__input-label">Projekt (optional)</label>
-            <input
-              value={projekt}
-              onChange={(e) => setProjekt(e.target.value)}
-              placeholder="z.B. Kundenprojekt / Ticket"
-              className="time-tracer__input"
-            />
-
-            {filteredSuggestions.length > 0 && (
-              <div className="time-tracer__suggestions">
-                {filteredSuggestions.map((p) => (
-                  <button key={p} onClick={() => setProjekt(p)} className="time-tracer__suggestion" title={p}>
+            <div className="time-tracer__select-wrap">
+              <select
+                value={projekt}
+                onChange={(e) => setProjekt(e.target.value)}
+                className="time-tracer__select"
+                disabled={busy || loading || projectSuggestions.length === 0}
+              >
+                <option value="">Ohne Projekt</option>
+                {projectSuggestions.map((p) => (
+                  <option key={p} value={p}>
                     {p}
-                  </button>
+                  </option>
                 ))}
-              </div>
-            )}
-
-            {projekt.trim() && filteredSuggestions.length === 0 && (
-              <div className="time-tracer__no-results">Keine Treffer.</div>
+              </select>
+              <span className="time-tracer__select-arrow" aria-hidden="true">
+                {<MdOutlineExpandMore size={20} />}
+              </span>
+            </div>
+            {projectSuggestions.length === 0 && (
+              <div className="time-tracer__select-hint">Keine Projekte verfuegbar.</div>
             )}
 
             <div className="time-tracer__actions">
@@ -234,4 +230,3 @@ function Stat({
     </div>
   );
 }
-
