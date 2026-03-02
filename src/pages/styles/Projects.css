@@ -1,0 +1,125 @@
+﻿.projects-page {
+  @apply rounded-3xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+.projects-page__header {
+  @apply flex items-center justify-between;
+}
+
+.projects-page__title {
+  @apply text-xl font-semibold;
+}
+
+.projects-page__refresh {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.projects-page__refresh-icon {
+  @apply h-4 w-4;
+}
+
+.projects-page__subtitle {
+  @apply mt-1 text-sm text-slate-500;
+}
+
+.projects-page__error {
+  @apply mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
+}
+
+.projects-page__error--action {
+  @apply mt-3;
+}
+
+.projects-page__add-row {
+  @apply mt-4 flex flex-col gap-2;
+}
+
+@media (min-width: 768px) {
+  .projects-page__add-row {
+    @apply flex-row;
+  }
+}
+
+.projects-page__add-input {
+  @apply flex-1;
+}
+
+.projects-page__add-actions {
+  @apply flex shrink-0 gap-2;
+}
+
+.projects-page__search-row {
+  @apply mt-3;
+}
+
+.projects-page__input {
+  @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+}
+
+.projects-page__add-btn {
+  @apply rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-60;
+}
+
+.projects-page__lookup-toggle-btn {
+  @apply rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:opacity-60;
+}
+
+.projects-page__lookup-panel {
+  @apply mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3;
+}
+
+.projects-page__lookup-header {
+  @apply flex items-center justify-between gap-2;
+}
+
+.projects-page__lookup-title {
+  @apply text-sm font-semibold text-slate-800;
+}
+
+.projects-page__lookup-count {
+  @apply text-xs text-slate-500;
+}
+
+.projects-page__lookup-input {
+  @apply mt-2 bg-white;
+}
+
+.projects-page__lookup-list {
+  @apply mt-2 max-h-72 space-y-2 overflow-y-auto pr-1;
+}
+
+.projects-page__lookup-item {
+  @apply flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2;
+}
+
+.projects-page__lookup-name {
+  @apply min-w-0 truncate text-sm font-medium text-slate-800;
+}
+
+.projects-page__lookup-add-btn {
+  @apply shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-60;
+}
+
+.projects-page__lookup-state {
+  @apply shrink-0 text-xs text-slate-500;
+}
+
+.projects-page__list {
+  @apply mt-4 space-y-2;
+}
+
+.projects-page__hint {
+  @apply text-sm text-slate-500;
+}
+
+.projects-page__item {
+  @apply flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3;
+}
+
+.projects-page__item-name {
+  @apply text-sm font-medium;
+}
+
+.projects-page__remove-btn {
+  @apply text-sm text-rose-700 transition hover:text-rose-900 disabled:opacity-60;
+}

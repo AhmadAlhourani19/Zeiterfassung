@@ -3,7 +3,8 @@ import { getDay, getMonth } from "../api/domino";
 import type { StempeluhrEntry } from "../api/types";
 import { formatDDMMYYYY, formatMMYYYY } from "../api/grouping";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
-import { IoCaretForward, IoCaretBack} from "react-icons/io5";
+import { IoCaretForward, IoCaretBack } from "react-icons/io5";
+import "./styles/Reports.css";
 
 function toInputDate(ddmmyyyy: string) {
   const [dd, mm, yyyy] = ddmmyyyy.split(".");
@@ -54,7 +55,7 @@ function formatTimeRounded(date: Date) {
 }
 
 function csvEscape(value: string) {
-  return `"${value.replace(/"/g, "\"\"")}"`;
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function buildCsv(rows: string[][]) {
@@ -84,10 +85,7 @@ export function Reports() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const dayIntervals = useMemo(
-    () => buildIntervalsForDay(dayEntries, new Date()),
-    [dayEntries]
-  );
+  const dayIntervals = useMemo(() => buildIntervalsForDay(dayEntries, new Date()), [dayEntries]);
   const dayStats = useMemo(() => calcWorkAndBreak(dayIntervals), [dayIntervals]);
 
   const monthProjectTotals = useMemo(() => {
@@ -213,229 +211,160 @@ export function Reports() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Berichte</h2>
-        <p className="mt-1 text-sm text-slate-500">Tages- und Monatsuebersichten (nur Anzeige).</p>
+    <div className="reports-page">
+      <div className="reports-page__section">
+        <h2 className="reports-page__title">Berichte</h2>
+        <p className="reports-page__subtitle">Tages- und Monatsuebersichten (nur Anzeige).</p>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-semibold">Tagesbericht</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void goDay(-1);
-                }}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-              >
-                 <IoCaretBack className="h-4 w-4" />
+        <div className="reports-page__summary-grid">
+          <div className="reports-page__panel">
+            <div className="reports-page__panel-title">Tagesbericht</div>
+            <div className="reports-page__controls">
+              <button type="button" onClick={() => void goDay(-1)} className="reports-page__icon-btn">
+                <IoCaretBack className="reports-page__icon" />
               </button>
+
               <input
                 type="date"
                 value={toInputDate(dayKey)}
                 onChange={(e) => setDayKey(fromInputDate(e.target.value))}
-                className="min-w-0 w-full sm:w-auto rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                className="reports-page__input"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  void goDay(1);
-                }}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-              >
-                 <IoCaretForward className="h-4 w-4" />
+
+              <button type="button" onClick={() => void goDay(1)} className="reports-page__icon-btn">
+                <IoCaretForward className="reports-page__icon" />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void loadDay();
-                }}
-                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-              >
+
+              <button type="button" onClick={() => void loadDay()} className="reports-page__primary-btn">
                 Laden
               </button>
+
               <button
                 type="button"
                 onClick={handleExportDay}
                 disabled={loading || dayEntries.length === 0}
-                className={[
-                  "rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700",
-                  "hover:border-slate-400 hover:text-slate-900",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                ].join(" ")}
+                className="reports-page__secondary-btn"
               >
                 Export
               </button>
             </div>
 
-            <div className="mt-3 text-sm text-slate-700">
-              Brutto: <span className="font-semibold">{fmtHM(dayStats.workMinutes)}</span> / Netto:{" "}
-              <span className="font-semibold">{fmtHM(dayStats.netMinutes)}</span>
+            <div className="reports-page__metric">
+              Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span> / Netto:{" "}
+              <span className="reports-page__metric-value">{fmtHM(dayStats.netMinutes)}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="reports-page__metric-detail">
               Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
               {fmtHM(dayStats.missingBreak)}
             </div>
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="text-sm font-semibold">Monatsbericht</div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void goMonth(-1);
-                }}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-              >
-                 <IoCaretBack className="h-4 w-4" />
+          <div className="reports-page__panel">
+            <div className="reports-page__panel-title">Monatsbericht</div>
+            <div className="reports-page__controls">
+              <button type="button" onClick={() => void goMonth(-1)} className="reports-page__icon-btn">
+                <IoCaretBack className="reports-page__icon" />
               </button>
+
               <input
                 type="month"
                 value={toInputMonth(monthKey)}
                 onChange={(e) => setMonthKey(fromInputMonth(e.target.value))}
-                className="min-w-0 w-full sm:w-auto rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+                className="reports-page__input"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  void goMonth(1);
-                }}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-              >
-                <IoCaretForward className="h-4 w-4" />
+
+              <button type="button" onClick={() => void goMonth(1)} className="reports-page__icon-btn">
+                <IoCaretForward className="reports-page__icon" />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void loadMonth();
-                }}
-                className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-              >
+
+              <button type="button" onClick={() => void loadMonth()} className="reports-page__primary-btn">
                 Laden
               </button>
+
               <button
                 type="button"
                 onClick={handleExportMonth}
                 disabled={loading || monthEntries.length === 0}
-                className={[
-                  "rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700",
-                  "hover:border-slate-400 hover:text-slate-900",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                ].join(" ")}
+                className="reports-page__secondary-btn"
               >
                 Export
               </button>
             </div>
-            <div className="mt-3 text-sm text-slate-600">
-              Buchungen im Monat: <span className="font-semibold">{monthEntries.length}</span>
+
+            <div className="reports-page__metric">
+              Buchungen im Monat: <span className="reports-page__metric-value">{monthEntries.length}</span>
             </div>
-            <div className="mt-1 text-sm text-slate-600">
-              Gesamt Projektzeit: <span className="font-semibold">{fmtHM(monthTotalMinutes)}</span>
+            <div className="reports-page__metric">
+              Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
             </div>
           </div>
         </div>
 
-        {err && (
-          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-            {err}
-          </div>
-        )}
-
-        {loading && <div className="mt-3 text-sm text-slate-500">Lade...</div>}
+        {err && <div className="reports-page__error">{err}</div>}
+        {loading && <div className="reports-page__loading">Lade...</div>}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="font-semibold">Arbeitsphasen ({dayKey})</h3>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                void goDay(-1);
-              }}
-              className="rounded-2xl border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-            >
-              Zurück
+      <div className="reports-page__section">
+        <div className="reports-page__section-header">
+          <h3 className="reports-page__section-title">Arbeitsphasen ({dayKey})</h3>
+          <div className="reports-page__section-actions">
+            <button type="button" onClick={() => void goDay(-1)} className="reports-page__ghost-btn">
+              Zuruck
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                void goDay(1);
-              }}
-              className="rounded-2xl border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-            >
+            <button type="button" onClick={() => void goDay(1)} className="reports-page__ghost-btn">
               Weiter
             </button>
           </div>
         </div>
-        <div className="mt-3 space-y-2">
+
+        <div className="reports-page__list">
           {dayIntervals.length === 0 ? (
-            <div className="text-sm text-slate-500">Noch keine Arbeitsphasen.</div>
+            <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
           ) : (
             dayIntervals.map((it, idx) => (
-              <div
-                key={`${dayKey}-${idx}`}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-              >
-                <div className="text-sm">
-                  <span className="font-medium">
+              <div key={`${dayKey}-${idx}`} className="reports-page__row">
+                <div className="reports-page__row-main">
+                  <span className="reports-page__row-time">
                     {formatTimeRounded(it.start)} - {formatTimeRounded(it.end)}
                   </span>
                   {it.project ? (
-                    <span className="text-slate-600"> | {it.project}</span>
+                    <span className="reports-page__row-project"> | {it.project}</span>
                   ) : (
-                    <span className="text-slate-400"> | (ohne Projekt)</span>
+                    <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
                   )}
                 </div>
-                <div className="text-sm text-slate-600">
-                  {fmtHM(Math.round((+it.end - +it.start) / 60000))}
-                </div>
+                <div className="reports-page__row-duration">{fmtHM(Math.round((+it.end - +it.start) / 60000))}</div>
               </div>
             ))
           )}
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="font-semibold">Projektzeiten (Monat {monthKey})</h3>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                void goMonth(-1);
-              }}
-              className="rounded-2xl border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-            >
-              Zurück
+      <div className="reports-page__section">
+        <div className="reports-page__section-header">
+          <h3 className="reports-page__section-title">Projektzeiten (Monat {monthKey})</h3>
+          <div className="reports-page__section-actions">
+            <button type="button" onClick={() => void goMonth(-1)} className="reports-page__ghost-btn">
+              Zuruck
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                void goMonth(1);
-              }}
-              className="rounded-2xl border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 hover:border-slate-400 hover:text-slate-900"
-            >
+            <button type="button" onClick={() => void goMonth(1)} className="reports-page__ghost-btn">
               Weiter
             </button>
           </div>
         </div>
-        <div className="mt-2 text-sm text-slate-600">
-          Gesamt Projektzeit: <span className="font-semibold">{fmtHM(monthTotalMinutes)}</span>
+
+        <div className="reports-page__metric">
+          Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
         </div>
-        <div className="mt-3 space-y-2">
+
+        <div className="reports-page__list">
           {monthProjectTotals.length === 0 ? (
-            <div className="text-sm text-slate-500">Keine Arbeitsphasen in diesem Monat.</div>
+            <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
           ) : (
             monthProjectTotals.map((project) => (
-              <div
-                key={`${monthKey}-${project.name}`}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-              >
-                <div className="text-sm font-medium text-slate-800">{project.name}</div>
-                <div className="text-sm font-semibold text-slate-700">{fmtHM(project.minutes)}</div>
+              <div key={`${monthKey}-${project.name}`} className="reports-page__row">
+                <div className="reports-page__project-name">{project.name}</div>
+                <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
               </div>
             ))
           )}
@@ -444,3 +373,4 @@ export function Reports() {
     </div>
   );
 }
+

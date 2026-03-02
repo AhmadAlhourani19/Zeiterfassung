@@ -13,6 +13,7 @@ import {
   getMonth,
   getProjectPicklist,
   getProjects,
+  getUserStatusLookup,
   isAuthError,
 } from "./api/domino";
 import type { ProjectEntry, ProjectPicklistEntry, StatusEntry, StempeluhrEntry } from "./api/types";
@@ -38,6 +39,13 @@ function getAuthErrorMessage(error: unknown) {
     return "Sie sind nicht angemeldet. Bitte melden Sie sich an.";
   }
   return null;
+}
+
+function normalizeDisplayName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  if (trimmed.includes("CN=")) return getDisplayUserFromKey(trimmed);
+  return trimmed;
 }
 
 function extractText(value: unknown): string | null {
@@ -131,6 +139,7 @@ export default function App() {
   const [statusEntries, setStatusEntries] = useState<StatusEntry[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [lookupUserName, setLookupUserName] = useState<string | null>(null);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const hasProjectLookup = projectLookup.length > 0;
@@ -163,9 +172,24 @@ export default function App() {
   }, [hasProjectLookup, projectLookup, projects]);
 
   const userName = useMemo(() => {
-    const first = todayEntries[0] ?? monthEntries[0];
-    return first?.Key ? getDisplayUserFromKey(first.Key) : null;
-  }, [todayEntries, monthEntries]);
+    const firstBooking = todayEntries[0] ?? monthEntries[0];
+    if (firstBooking?.Key) {
+      return getDisplayUserFromKey(firstBooking.Key);
+    }
+
+    const fromStatus = statusEntries.reduce<string | null>((found, entry) => {
+      if (found) return found;
+      return (
+        normalizeDisplayName(entry.commonName) ??
+        normalizeDisplayName(entry.CommonName) ??
+        normalizeDisplayName(entry.Name) ??
+        normalizeDisplayName(entry.Key)
+      );
+    }, null);
+    if (fromStatus) return fromStatus;
+
+    return lookupUserName;
+  }, [todayEntries, monthEntries, statusEntries, lookupUserName]);
 
   async function loadToday() {
     setLoadingToday(true);
@@ -275,6 +299,25 @@ export default function App() {
     }
   }
 
+  async function loadUserIdentity() {
+    try {
+      const lookup = await getUserStatusLookup();
+      const name =
+        normalizeDisplayName(lookup.commonName) ??
+        normalizeDisplayName(lookup.effectiveName);
+      setLookupUserName(name);
+      setAuthError(null);
+    } catch (e: unknown) {
+      const authMessage = getAuthErrorMessage(e);
+      if (authMessage) {
+        setLookupUserName(null);
+        setAuthError(authMessage);
+        return;
+      }
+      console.error(e);
+    }
+  }
+
   async function ensureProject(name: string) {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -297,6 +340,7 @@ export default function App() {
     loadProjects();
     loadProjectLookup();
     loadStatus();
+    loadUserIdentity();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -325,6 +369,7 @@ export default function App() {
           if (id === "status") loadStatus();
         }}
         userName={userName}
+        authError={authError}
       >
         {active === "time" && (
           <TimeTracer

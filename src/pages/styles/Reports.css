@@ -1,0 +1,140 @@
+﻿.reports-page {
+  @apply space-y-6;
+}
+
+.reports-page__section {
+  @apply rounded-3xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+.reports-page__title {
+  @apply text-xl font-semibold;
+}
+
+.reports-page__subtitle {
+  @apply mt-1 text-sm text-slate-500;
+}
+
+.reports-page__summary-grid {
+  @apply mt-4 grid grid-cols-1 gap-4;
+}
+
+@media (min-width: 1280px) {
+  .reports-page__summary-grid {
+    @apply grid-cols-2;
+  }
+}
+
+.reports-page__panel {
+  @apply min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4;
+}
+
+.reports-page__panel-title {
+  @apply text-sm font-semibold;
+}
+
+.reports-page__controls {
+  @apply mt-2 flex flex-wrap items-center gap-2;
+}
+
+.reports-page__icon-btn {
+  @apply rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
+}
+
+.reports-page__icon {
+  @apply h-4 w-4;
+}
+
+.reports-page__input {
+  @apply min-w-0 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+}
+
+@media (min-width: 640px) {
+  .reports-page__input {
+    width: auto;
+  }
+}
+
+.reports-page__primary-btn {
+  @apply rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-black;
+}
+
+.reports-page__secondary-btn {
+  @apply rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.reports-page__metric {
+  @apply mt-3 text-sm text-slate-600;
+}
+
+.reports-page__metric-value {
+  @apply font-semibold;
+}
+
+.reports-page__metric-detail {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.reports-page__error {
+  @apply mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
+}
+
+.reports-page__loading {
+  @apply mt-3 text-sm text-slate-500;
+}
+
+.reports-page__section-header {
+  @apply flex items-center justify-between gap-3;
+}
+
+.reports-page__section-title {
+  @apply font-semibold;
+}
+
+.reports-page__section-actions {
+  @apply flex items-center gap-2;
+}
+
+.reports-page__ghost-btn {
+  @apply rounded-2xl border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
+}
+
+.reports-page__list {
+  @apply mt-3 space-y-2;
+}
+
+.reports-page__empty {
+  @apply text-sm text-slate-500;
+}
+
+.reports-page__row {
+  @apply flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3;
+}
+
+.reports-page__row-main {
+  @apply text-sm;
+}
+
+.reports-page__row-time {
+  @apply font-medium;
+}
+
+.reports-page__row-project {
+  @apply text-slate-600;
+}
+
+.reports-page__row-project-muted {
+  @apply text-slate-400;
+}
+
+.reports-page__row-duration {
+  @apply text-sm text-slate-600;
+}
+
+.reports-page__project-name {
+  @apply text-sm font-medium text-slate-800;
+}
+
+.reports-page__project-minutes {
+  @apply text-sm font-semibold text-slate-700;
+}
+

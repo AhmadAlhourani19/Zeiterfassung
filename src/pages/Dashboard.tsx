@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { getDay, getMonth } from "../api/domino";
 import type { StempeluhrEntry } from "../api/types";
 import { PunchTable } from "../components/PunchTable";
@@ -10,6 +10,7 @@ import {
   getDisplayUserFromKey,
   bookingLabel,
 } from "../api/grouping";
+import "./styles/Dashboard.css";
 
 function getCurrentKeys() {
   const now = new Date();
@@ -20,7 +21,7 @@ function getCurrentKeys() {
 }
 
 function csvEscape(value: string) {
-  return `"${value.replace(/"/g, "\"\"")}"`;
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function buildCsv(rows: string[][]) {
@@ -126,26 +127,20 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <div className="dashboard-page">
+      <div className="dashboard-page__top">
         <div>
-          <div className="text-sm text-slate-500">Angemeldeter Benutzer</div>
-          <div className="mt-1 text-2xl font-semibold">
-            {userName ?? "—"}
-          </div>
-          <div className="mt-1 text-sm text-slate-500">
-            Datum: <span className="font-medium">{todayKey}</span>
+          <div className="dashboard-page__label">Angemeldeter Benutzer</div>
+          <div className="dashboard-page__username">{userName ?? "-"}</div>
+          <div className="dashboard-page__date">
+            Datum: <span className="dashboard-page__date-value">{todayKey}</span>
           </div>
         </div>
       </div>
 
-      {error && (
-        <div className="mt-5 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
-          {error}
-        </div>
-      )}
+      {error && <div className="dashboard-page__error">{error}</div>}
 
-      <div className="mt-6 space-y-6">
+      <div className="dashboard-page__sections">
         <PunchCard
           todayEntries={todayEntries}
           onPunched={() => {
@@ -156,21 +151,18 @@ export default function Dashboard() {
 
         <PunchTable title={`Heute (${todayKey})`} entries={todayEntries} />
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Berichte</h3>
-            <div className="text-sm text-slate-500">Excel-Export</div>
+        <div className="dashboard-page__card">
+          <div className="dashboard-page__card-header">
+            <h3 className="dashboard-page__card-title">Berichte</h3>
+            <div className="dashboard-page__card-subtitle">Excel-Export</div>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+
+          <div className="dashboard-page__export-grid">
             <button
               type="button"
               onClick={handleExportToday}
               disabled={loadingToday || todayEntries.length === 0}
-              className={[
-                "rounded-2xl px-4 py-2 text-sm font-semibold transition",
-                "bg-slate-900 text-white hover:bg-slate-800",
-                "disabled:cursor-not-allowed disabled:opacity-60",
-              ].join(" ")}
+              className="dashboard-page__export-btn"
             >
               Tagesbericht exportieren
             </button>
@@ -178,40 +170,33 @@ export default function Dashboard() {
               type="button"
               onClick={handleExportMonth}
               disabled={loadingMonth || monthEntries.length === 0}
-              className={[
-                "rounded-2xl px-4 py-2 text-sm font-semibold transition",
-                "bg-slate-900 text-white hover:bg-slate-800",
-                "disabled:cursor-not-allowed disabled:opacity-60",
-              ].join(" ")}
+              className="dashboard-page__export-btn"
             >
               Monatsbericht exportieren
             </button>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Monatsübersicht ({currentMonthKey})</h3>
-            <div className="text-sm text-slate-500">
-              {loadingMonth ? "Lade…" : `${monthEntries.length} Buchungen`}
+        <div className="dashboard-page__card">
+          <div className="dashboard-page__card-header">
+            <h3 className="dashboard-page__card-title">Monatsubersicht ({currentMonthKey})</h3>
+            <div className="dashboard-page__card-subtitle">
+              {loadingMonth ? "Lade..." : `${monthEntries.length} Buchungen`}
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="dashboard-page__month-list">
             {Object.keys(groupedDays).length === 0 && (
-              <div className="text-slate-500">Keine Buchungen in diesem Monat.</div>
+              <div className="dashboard-page__empty">Keine Buchungen in diesem Monat.</div>
             )}
 
             {Object.entries(groupedDays)
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([day, entries]) => (
-                <div
-                  key={day}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{day}</div>
-                    <div className="text-sm text-slate-500">{entries.length} Buchungen</div>
+                <div key={day} className="dashboard-page__month-item">
+                  <div className="dashboard-page__month-item-row">
+                    <div className="dashboard-page__month-item-day">{day}</div>
+                    <div className="dashboard-page__month-item-count">{entries.length} Buchungen</div>
                   </div>
                 </div>
               ))}

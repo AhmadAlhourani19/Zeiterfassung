@@ -1,0 +1,185 @@
+﻿.status-page {
+  @apply rounded-3xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+.status-page__header {
+  @apply flex items-center justify-between;
+}
+
+.status-page__title {
+  @apply text-xl font-semibold;
+}
+
+.status-page__refresh {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.status-page__refresh-icon {
+  @apply h-4 w-4;
+}
+
+.status-page__error {
+  @apply mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
+}
+
+.status-page__content {
+  @apply mt-4;
+}
+
+.status-page__filters {
+  @apply flex gap-2 overflow-x-auto pb-2;
+}
+
+@media (min-width: 640px) {
+  .status-page__filters {
+    @apply flex-wrap;
+  }
+}
+
+.status-page__filter-chip {
+  @apply shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition;
+}
+
+.status-page__filter-chip--active {
+  @apply bg-slate-900 text-white;
+}
+
+.status-page__filter-chip--inactive {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
+}
+
+.status-page__table-wrap {
+  @apply mt-4 overflow-x-auto pb-2;
+}
+
+.status-page__table {
+  @apply min-w-0 rounded-2xl border border-slate-200;
+}
+
+@media (min-width: 640px) {
+  .status-page__table {
+    min-width: 520px;
+  }
+}
+
+.status-page__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 100px;
+}
+
+@media (min-width: 640px) {
+  .status-page__grid--with-location {
+    grid-template-columns: 140px minmax(0, 1fr) 140px;
+  }
+
+  .status-page__grid--without-location {
+    grid-template-columns: minmax(0, 1fr) 140px;
+  }
+}
+
+.status-page__table-head {
+  @apply bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500;
+}
+
+.status-page__location-head {
+  @apply hidden;
+}
+
+@media (min-width: 640px) {
+  .status-page__location-head {
+    @apply block;
+  }
+}
+
+.status-page__sort-btn {
+  @apply flex items-center gap-2 text-slate-500 transition hover:text-slate-700;
+}
+
+.status-page__sort-btn--left {
+  @apply text-left;
+}
+
+.status-page__sort-btn--right {
+  @apply justify-end text-right;
+}
+
+.status-page__sort-indicator {
+  @apply text-[10px] text-slate-400;
+}
+
+.status-page__body {
+  @apply divide-y divide-slate-100;
+}
+
+.status-page__loading {
+  @apply px-4 py-3 text-sm text-slate-500;
+}
+
+.status-page__empty {
+  @apply px-4 py-6 text-sm text-slate-500;
+}
+
+.status-page__row {
+  @apply items-center px-4 py-3;
+}
+
+.status-page__location-cell {
+  @apply hidden;
+}
+
+@media (min-width: 640px) {
+  .status-page__location-cell {
+    @apply block;
+  }
+}
+
+.status-page__location-pill {
+  @apply inline-flex items-center rounded-full bg-slate-900/10 px-3 py-1 text-xs font-semibold text-slate-700;
+}
+
+.status-page__location-mobile {
+  @apply mb-1;
+}
+
+@media (min-width: 640px) {
+  .status-page__location-mobile {
+    @apply hidden;
+  }
+}
+
+.status-page__location-pill--mobile {
+  @apply px-2 py-0.5 text-[10px];
+}
+
+.status-page__name-cell {
+  @apply text-sm font-medium text-slate-900;
+}
+
+.status-page__project {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.status-page__time {
+  @apply ml-2 text-xs text-slate-400;
+}
+
+.status-page__status-cell {
+  @apply text-right;
+}
+
+.status-page__badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1;
+}
+
+.status-page__badge--online {
+  @apply bg-emerald-50 text-emerald-700 ring-emerald-200;
+}
+
+.status-page__badge--offline {
+  @apply bg-slate-100 text-slate-700 ring-slate-200;
+}
+
+.status-page__badge--break {
+  @apply bg-amber-50 text-amber-700 ring-amber-200;
+}
+

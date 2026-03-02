@@ -1,0 +1,154 @@
+﻿.time-tracer {
+  @apply space-y-6;
+}
+
+.time-tracer__card {
+  @apply rounded-3xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+.time-tracer__layout {
+  @apply flex flex-col gap-4;
+}
+
+.time-tracer__summary {
+  order: 2;
+}
+
+.time-tracer__actions-panel {
+  @apply w-full;
+  order: 1;
+}
+
+@media (min-width: 768px) {
+  .time-tracer__layout {
+    @apply flex-row items-start justify-between;
+  }
+
+  .time-tracer__summary {
+    order: 1;
+  }
+
+  .time-tracer__actions-panel {
+    order: 2;
+    width: 360px;
+  }
+}
+
+.time-tracer__date-label {
+  @apply text-sm text-slate-500;
+}
+
+.time-tracer__date-value {
+  @apply mt-1 text-2xl font-semibold;
+}
+
+.time-tracer__status-row {
+  @apply mt-2 text-sm text-slate-600;
+}
+
+.time-tracer__status-badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1;
+}
+
+.time-tracer__status-badge--checked-in {
+  @apply bg-emerald-50 text-emerald-700 ring-emerald-200;
+}
+
+.time-tracer__status-badge--on-break {
+  @apply bg-amber-50 text-amber-700 ring-amber-200;
+}
+
+.time-tracer__status-badge--checked-out {
+  @apply bg-slate-100 text-slate-700 ring-slate-200;
+}
+
+.time-tracer__status-time {
+  @apply text-slate-500;
+}
+
+.time-tracer__project-row {
+  @apply mt-2 text-sm text-slate-600;
+}
+
+.time-tracer__project-pill {
+  @apply inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200;
+}
+
+.time-tracer__stats {
+  @apply mt-4 grid grid-cols-1 gap-3;
+}
+
+@media (min-width: 640px) {
+  .time-tracer__stats {
+    @apply grid-cols-2;
+  }
+}
+
+.time-tracer__input-label {
+  @apply text-xs text-slate-500;
+}
+
+.time-tracer__input {
+  @apply mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+}
+
+.time-tracer__suggestions {
+  @apply mt-2 flex flex-wrap gap-2;
+}
+
+.time-tracer__suggestion {
+  @apply max-w-[220px] truncate rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700 transition hover:bg-slate-200;
+}
+
+.time-tracer__no-results {
+  @apply mt-2 text-xs text-slate-500;
+}
+
+.time-tracer__actions {
+  @apply mt-4 flex flex-col gap-2;
+}
+
+.time-tracer__action-btn {
+  @apply rounded-2xl px-5 py-3 text-sm font-semibold text-white transition disabled:opacity-60;
+}
+
+.time-tracer__action-btn--green {
+  @apply bg-emerald-600 hover:bg-emerald-700;
+}
+
+.time-tracer__action-btn--red {
+  @apply bg-rose-600 hover:bg-rose-700;
+}
+
+.time-tracer__action-btn--indigo {
+  @apply bg-indigo-600 hover:bg-indigo-700;
+}
+
+.time-tracer__action-btn--amber {
+  @apply bg-amber-500 hover:bg-amber-600;
+}
+
+.time-tracer__error {
+  @apply mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
+}
+
+.time-tracer__stat {
+  @apply rounded-2xl border border-slate-200 bg-slate-50 p-4;
+}
+
+.time-tracer__stat--highlight {
+  @apply border-amber-200 bg-amber-50;
+}
+
+.time-tracer__stat-title {
+  @apply text-xs text-slate-500;
+}
+
+.time-tracer__stat-value {
+  @apply mt-1 text-lg font-semibold;
+}
+
+.time-tracer__stat-hint {
+  @apply mt-1 text-xs text-slate-600;
+}
+

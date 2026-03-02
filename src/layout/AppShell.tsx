@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+﻿import { useState, type ReactNode } from "react";
 
 export type NavId = "time" | "projects" | "reports" | "status";
 
@@ -13,14 +13,17 @@ export function AppShell({
   active,
   onChange,
   userName,
+  authError,
   children,
 }: {
   active: NavId;
   onChange: (id: NavId) => void;
   userName?: string | null;
+  authError?: string | null;
   children: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const displayUser = userName?.trim() ? userName : "-";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -32,7 +35,7 @@ export function AppShell({
       >
         <button
           type="button"
-          aria-label="Menü schließen"
+          aria-label="Menu schliessen"
           className="absolute inset-0 h-full w-full bg-slate-900/40"
           onClick={() => setMobileOpen(false)}
         />
@@ -45,7 +48,12 @@ export function AppShell({
         >
           <div className="mb-6">
             <div className="text-xs text-slate-500">Angemeldet als</div>
-            <div className="text-lg font-semibold">{userName ?? "—"}</div>
+            <div className="text-lg font-semibold">{displayUser}</div>
+            {authError && (
+              <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                {authError}
+              </div>
+            )}
           </div>
 
           <nav className="space-y-2">
@@ -76,7 +84,7 @@ export function AppShell({
             type="button"
             onClick={() => setMobileOpen(true)}
             className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-700 shadow-sm hover:bg-slate-50"
-            aria-label="Menü öffnen"
+            aria-label="Menu oeffnen"
           >
             <span className="flex flex-col gap-1">
               <span className="h-0.5 w-5 rounded-full bg-slate-700"></span>
@@ -85,14 +93,19 @@ export function AppShell({
             </span>
           </button>
           <div className="text-sm font-semibold">{nav.find((item) => item.id === active)?.label}</div>
-          <div className="text-xs text-slate-500">{userName ?? "—"}</div>
+          <div className="text-xs text-slate-500">{displayUser}</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-6">
           <aside className="hidden md:block rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-4">
               <div className="text-xs text-slate-500">Angemeldet als</div>
-              <div className="text-lg font-semibold">{userName ?? "—"}</div>
+              <div className="text-lg font-semibold">{displayUser}</div>
+              {authError && (
+                <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+                  {authError}
+                </div>
+              )}
             </div>
 
             <nav className="space-y-2">
