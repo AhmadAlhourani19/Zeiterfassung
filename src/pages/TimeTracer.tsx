@@ -47,6 +47,14 @@ export function TimeTracer({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [statusUnid, setStatusUnid] = useState<string | null>(null);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [projectMenuQuery, setProjectMenuQuery] = useState("");
+
+  const filteredProjectSuggestions = useMemo(() => {
+    const query = projectMenuQuery.trim().toLowerCase();
+    if (!query) return projectSuggestions;
+    return projectSuggestions.filter((name) => name.toLowerCase().includes(query));
+  }, [projectSuggestions, projectMenuQuery]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,6 +72,36 @@ export function TimeTracer({
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!projectMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProjectMenuOpen(false);
+        setProjectMenuQuery("");
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [projectMenuOpen]);
+
+  function closeProjectMenu() {
+    setProjectMenuOpen(false);
+    setProjectMenuQuery("");
+  }
+
+  function pickProject(name: string) {
+    setProjekt(name);
+    closeProjectMenu();
+  }
 
   async function updateStatus(type: "0" | "1" | "2", project: string) {
     const cleanedProject = project.trim() || latest?.Projekt?.trim() || "";
@@ -147,26 +185,101 @@ export function TimeTracer({
 
           <div className="time-tracer__actions-panel">
             <label className="time-tracer__input-label">Projekt (optional)</label>
-            <div className="time-tracer__select-wrap">
-              <select
-                value={projekt}
-                onChange={(e) => setProjekt(e.target.value)}
-                className="time-tracer__select"
-                disabled={busy || loading || projectSuggestions.length === 0}
+            <button
+              type="button"
+              onClick={() => setProjectMenuOpen(true)}
+              className="time-tracer__project-trigger"
+              disabled={busy || loading || projectSuggestions.length === 0}
+            >
+              <span
+                className={[
+                  "time-tracer__project-trigger-value",
+                  !projekt ? "time-tracer__project-trigger-value--muted" : "",
+                ]
+                  .join(" ")
+                  .trim()}
               >
-                <option value="">Ohne Projekt</option>
-                {projectSuggestions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-              <span className="time-tracer__select-arrow" aria-hidden="true">
-                {<MdOutlineExpandMore size={20} />}
+                {projekt || "Ohne Projekt"}
               </span>
-            </div>
+              <span className="time-tracer__project-trigger-icon" aria-hidden="true">
+                <MdOutlineExpandMore size={20} />
+              </span>
+            </button>
+
             {projectSuggestions.length === 0 && (
-              <div className="time-tracer__select-hint">Keine Projekte verfuegbar.</div>
+              <div className="time-tracer__project-hint">Keine Projekte verfuegbar.</div>
+            )}
+
+            {projectMenuOpen && (
+              <div className="time-tracer__project-overlay" onClick={closeProjectMenu}>
+                <div
+                  className="time-tracer__project-menu"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Projekt auswaehlen"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="time-tracer__project-menu-header">
+                    <div>
+                      <div className="time-tracer__project-menu-title">Projekt auswaehlen</div>
+                      <div className="time-tracer__project-menu-subtitle">{projectSuggestions.length} Projekte</div>
+                    </div>
+                    <button type="button" onClick={closeProjectMenu} className="time-tracer__project-menu-close">
+                      Schliessen
+                    </button>
+                  </div>
+
+                  <input
+                    value={projectMenuQuery}
+                    onChange={(event) => setProjectMenuQuery(event.target.value)}
+                    placeholder="Projekt suchen..."
+                    className="time-tracer__project-search"
+                    disabled={busy || loading}
+                  />
+
+                  <div className="time-tracer__project-list">
+                    <button
+                      type="button"
+                      onClick={() => pickProject("")}
+                      className={[
+                        "time-tracer__project-item",
+                        !projekt ? "time-tracer__project-item--active" : "",
+                      ]
+                        .join(" ")
+                        .trim()}
+                    >
+                      <span className="time-tracer__project-item-name">Ohne Projekt</span>
+                      {!projekt && <span className="time-tracer__project-item-tag">Aktiv</span>}
+                    </button>
+
+                    {filteredProjectSuggestions.length === 0 && (
+                      <div className="time-tracer__project-empty">Keine Treffer.</div>
+                    )}
+
+                    {filteredProjectSuggestions.map((name) => {
+                      const isActive = projekt === name;
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => pickProject(name)}
+                          className={[
+                            "time-tracer__project-item",
+                            isActive ? "time-tracer__project-item--active" : "",
+                          ]
+                            .join(" ")
+                            .trim()}
+                        >
+                          <span className="time-tracer__project-item-name" title={name}>
+                            {name}
+                          </span>
+                          {isActive && <span className="time-tracer__project-item-tag">Aktiv</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="time-tracer__actions">

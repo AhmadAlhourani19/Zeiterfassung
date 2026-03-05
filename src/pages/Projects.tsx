@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { createProject, deleteProject } from "../api/domino";
 import type { ProjectEntry } from "../api/types";
 import "./styles/Projects.css";
@@ -24,7 +24,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
   const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
   const [lookupOpen, setLookupOpen] = useState(false);
-  const [selectedLookup, setSelectedLookup] = useState("");
+  const [lookupQuery, setLookupQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -93,9 +93,40 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     return names;
   }, [lookupProjects]);
 
-  const selectableLookupCount = useMemo(() => {
+  const filteredLookupNames = useMemo(() => {
+    const query = lookupQuery.trim().toLowerCase();
+    if (!query) return lookupNames;
+    return lookupNames.filter((name) => name.toLowerCase().includes(query));
+  }, [lookupNames, lookupQuery]);
+
+  const availableLookupCount = useMemo(() => {
     return lookupNames.filter((name) => !selectedNameSet.has(normalizeName(name))).length;
   }, [lookupNames, selectedNameSet]);
+
+  useEffect(() => {
+    if (!lookupOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLookupOpen(false);
+        setLookupQuery("");
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lookupOpen]);
+
+  function closeLookup() {
+    setLookupOpen(false);
+    setLookupQuery("");
+  }
 
   async function add() {
     const v = value.trim();
@@ -127,7 +158,6 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     setActionError(null);
     try {
       await createProject({ Projektname: v });
-      setSelectedLookup("");
       await onReload();
     } catch (e: unknown) {
       setActionError(getErrorMessage(e, "Projekt konnte nicht erstellt werden"));
@@ -193,7 +223,13 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
           </button>
           <button
             type="button"
-            onClick={() => setLookupOpen((open) => !open)}
+            onClick={() => {
+              if (lookupOpen) {
+                closeLookup();
+              } else {
+                setLookupOpen(true);
+              }
+            }}
             disabled={busy || loading}
             className="projects-page__lookup-toggle-btn"
           >
@@ -203,60 +239,75 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
       </div>
 
       {lookupOpen && (
-        <div className="projects-page__lookup-panel">
-          <div className="projects-page__lookup-header">
-            <div className="projects-page__lookup-title">Projekt Lookup</div>
-            <div className="projects-page__lookup-count">{selectableLookupCount} verfuegbar</div>
-          </div>
-
-          {lookupNames.length === 0 ? (
-            <div className="projects-page__hint">Keine Lookup-Projekte verfuegbar.</div>
-          ) : (
-            <>
-              <div className="projects-page__lookup-select-row">
-                <select
-                  value={selectedLookup}
-                  onChange={(e) => setSelectedLookup(e.target.value)}
-                  className="projects-page__select"
-                  disabled={busy || loading}
-                >
-                  <option value="">Projekt aus Lookup waehlen...</option>
-                  {lookupNames.map((name) => {
-                    const alreadyAdded = selectedNameSet.has(normalizeName(name));
-                    return (
-                      <option key={name} value={name} disabled={alreadyAdded}>
-                        {alreadyAdded ? `${name} (bereits hinzugefuegt)` : name}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                <button
-                  type="button"
-                  onClick={() => void addFromLookup(selectedLookup)}
-                  disabled={busy || loading || !selectedLookup || selectedNameSet.has(normalizeName(selectedLookup))}
-                  className="projects-page__lookup-add-btn"
-                >
-                  Auswaehlen
-                </button>
+        <div className="projects-page__lookup-overlay" onClick={closeLookup}>
+          <div
+            className="projects-page__lookup-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Projekt Lookup"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="projects-page__lookup-header">
+              <div>
+                <div className="projects-page__lookup-title">Projekt Lookup</div>
+                <div className="projects-page__lookup-count">{availableLookupCount} verfuegbar</div>
               </div>
+              <button
+                type="button"
+                onClick={closeLookup}
+                className="projects-page__lookup-close-btn"
+              >
+                Schliessen
+              </button>
+            </div>
 
-              {selectedLookup && selectedNameSet.has(normalizeName(selectedLookup)) && (
-                <div className="projects-page__lookup-note">Dieses Projekt ist bereits hinzugefuegt.</div>
+            <div className="projects-page__lookup-search-row">
+              <input
+                value={lookupQuery}
+                onChange={(e) => setLookupQuery(e.target.value)}
+                placeholder="Lookup suchen..."
+                className="projects-page__input"
+                disabled={busy || loading}
+              />
+            </div>
+
+            <div className="projects-page__lookup-list">
+              {lookupNames.length === 0 && (
+                <div className="projects-page__hint">Keine Lookup-Projekte verfuegbar.</div>
               )}
-            </>
-          )}
+
+              {lookupNames.length > 0 && filteredLookupNames.length === 0 && (
+                <div className="projects-page__hint">Keine Treffer im Lookup.</div>
+              )}
+
+              {filteredLookupNames.map((name) => {
+                const alreadyAdded = selectedNameSet.has(normalizeName(name));
+                return (
+                  <div key={name} className="projects-page__lookup-item">
+                    <div className="projects-page__lookup-name" title={name}>
+                      {name}
+                    </div>
+
+                    {alreadyAdded ? (
+                      <span className="projects-page__lookup-state">Bereits hinzugefuegt</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void addFromLookup(name)}
+                        disabled={busy || loading}
+                        className="projects-page__lookup-add-btn"
+                      >
+                        Auswaehlen
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="projects-page__search-row">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Projekt suchen..."
-          className="projects-page__input"
-        />
-      </div>
 
       <div className="projects-page__list">
         {loading && <div className="projects-page__hint">Lade Projekte...</div>}
