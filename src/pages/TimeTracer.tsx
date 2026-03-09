@@ -4,6 +4,7 @@ import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc
 import { createPunch, getUserStatusLookup, updatePunchStatus } from "../api/domino";
 import "./styles/TimeTracer.css";
 import { MdOutlineExpandMore } from "react-icons/md";
+import { IconClose, IconAnmelden, IconPause, IconAbmelden } from "../components/Icons";
 
 function latestEntry(entries: StempeluhrEntry[]) {
   if (!entries.length) return null;
@@ -35,13 +36,37 @@ export function TimeTracer({
     isCheckedIn
       ? "time-tracer__status-badge--checked-in"
       : isOnBreak
-      ? "time-tracer__status-badge--on-break"
-      : "time-tracer__status-badge--checked-out",
+        ? "time-tracer__status-badge--on-break"
+        : "time-tracer__status-badge--checked-out",
   ].join(" ");
   const latestProject = latest?.Projekt?.trim() || "";
 
-  const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date()), [todayEntries]);
-  const { breakMinutes, netMinutes } = useMemo(() => calcWorkAndBreak(intervals), [intervals]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Keep work/break stats live while the user is checked in or currently on break.
+  useEffect(() => {
+    if (!isCheckedIn && !isOnBreak) return;
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const id = window.setInterval(tick, 15000);
+    return () => window.clearInterval(id);
+  }, [isCheckedIn, isOnBreak]);
+
+  const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date(nowMs)), [todayEntries, nowMs]);
+  const baseStats = useMemo(() => calcWorkAndBreak(intervals), [intervals]);
+
+  const breakMinutes = useMemo(() => {
+    if (!isOnBreak || !latest?.Zeit) return baseStats.breakMinutes;
+    const breakStartMs = +new Date(latest.Zeit);
+    if (!Number.isFinite(breakStartMs)) return baseStats.breakMinutes;
+    const ongoingBreak = Math.max(0, Math.round((nowMs - breakStartMs) / 60000));
+    return baseStats.breakMinutes + ongoingBreak;
+  }, [isOnBreak, latest?.Zeit, nowMs, baseStats.breakMinutes]);
+
+  const netMinutes = useMemo(() => {
+    const missingBreak = Math.max(0, baseStats.requiredBreak - breakMinutes);
+    return Math.max(0, baseStats.workMinutes - missingBreak);
+  }, [baseStats.requiredBreak, baseStats.workMinutes, breakMinutes]);
 
   const [projekt, setProjekt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,6 +117,15 @@ export function TimeTracer({
       document.body.style.overflow = previousOverflow;
     };
   }, [projectMenuOpen]);
+
+  // Beim Laden das zuletzt aktive Projekt als Auswahl übernehmen
+  const [initialProjectSet, setInitialProjectSet] = useState(false);
+  useEffect(() => {
+    if (!initialProjectSet && latestProject) {
+      setProjekt(latestProject);
+      setInitialProjectSet(true);
+    }
+  }, [latestProject, initialProjectSet]);
 
   function closeProjectMenu() {
     setProjectMenuOpen(false);
@@ -146,7 +180,11 @@ export function TimeTracer({
         console.warn("Status update failed after punch creation", error);
       }
       if (trimmed) onProjectUsed(trimmed);
-      setProjekt("");
+      /* 
+          Projekt in der Liste muss nicht wieder ausgewählt werden, wenn bereits ein Projekt aktiv ist und eine neue Anmeldung oder Pause erfolgt.
+      */
+      // Projekt nicht reseten
+      // setProjekt("");      
       onRefresh();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Buchung fehlgeschlagen";
@@ -166,14 +204,18 @@ export function TimeTracer({
 
             <div className="time-tracer__status-row">
               <span>Status: </span>
-              <span className={statusBadgeClass}>{statusLabel}</span>
-              {latest && <span className="time-tracer__status-time"> | {new Date(latest.Zeit).toLocaleTimeString()}</span>}
+              <span className={statusBadgeClass}>
+                {statusLabel}
+                {latest && ` ${new Date(latest.Zeit).toLocaleTimeString()}`}
+              </span>
             </div>
 
-            {latestProject && (
+            {isCheckedIn && latestProject && (
               <div className="time-tracer__project-row">
                 <span>Projekt: </span>
-                <span className="time-tracer__project-pill">{latestProject}</span>
+                <span className="time-tracer__project-pill" title={latestProject}>
+                  {latestProject}
+                </span>
               </div>
             )}
 
@@ -207,7 +249,7 @@ export function TimeTracer({
             </button>
 
             {projectSuggestions.length === 0 && (
-              <div className="time-tracer__project-hint">Keine Projekte verfuegbar.</div>
+              <div className="time-tracer__project-hint">Keine Projekte verfügbar.</div>
             )}
 
             {projectMenuOpen && (
@@ -216,23 +258,24 @@ export function TimeTracer({
                   className="time-tracer__project-menu"
                   role="dialog"
                   aria-modal="true"
-                  aria-label="Projekt auswaehlen"
+                  aria-label="Projekt auswählen"
                   onClick={(event) => event.stopPropagation()}
                 >
                   <div className="time-tracer__project-menu-header">
                     <div>
-                      <div className="time-tracer__project-menu-title">Projekt auswaehlen</div>
+                      <div className="time-tracer__project-menu-title">Projekt auswählen</div>
                       <div className="time-tracer__project-menu-subtitle">{projectSuggestions.length} Projekte</div>
                     </div>
                     <button type="button" onClick={closeProjectMenu} className="time-tracer__project-menu-close">
-                      Schliessen
+                      {/* Schliessen */}
+                      <IconClose className="h-5 w-5 text-slate-600" />
                     </button>
                   </div>
 
                   <input
                     value={projectMenuQuery}
                     onChange={(event) => setProjectMenuQuery(event.target.value)}
-                    placeholder="Projekt suchen..."
+                    placeholder="Suchen"
                     className="time-tracer__project-search"
                     disabled={busy || loading}
                   />
@@ -284,33 +327,143 @@ export function TimeTracer({
 
             <div className="time-tracer__actions">
               {!isCheckedIn && !isOnBreak ? (
-                <button disabled={busy || loading} onClick={() => doPunch("0")} className="time-tracer__action-btn time-tracer__action-btn--green">
-                  {busy ? "Speichern..." : "Anmelden"}
+                <button
+                  disabled={busy || loading}
+                  onClick={() => doPunch("0")}
+                  className="time-tracer__action-card time-tracer__action-card--green"
+                >
+                  <span className="time-tracer__action-card-content">
+                    <span className="time-tracer__action-card-text">
+                      <span className="time-tracer__action-card-title">
+                        {busy ? "Speichern..." : "Anmelden"}
+                      </span>
+                      {!busy && (
+                        <span className="time-tracer__action-card-subtitle">
+                          Arbeitszeit starten
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="time-tracer__action-card-icon-wrap">
+                      <IconAnmelden className="time-tracer__action-card-icon" />
+                    </span>
+                  </span>
                 </button>
-              ) : isOnBreak ? (
+            ) : isOnBreak ? (
                 <>
-                  <button disabled={busy || loading} onClick={() => doPunch("0")} className="time-tracer__action-btn time-tracer__action-btn--green">
-                    {busy ? "Speichern..." : "Pause beenden"}
+                  <button
+                  disabled={busy || loading}
+                  onClick={() => doPunch("0")}
+                  className="time-tracer__action-card time-tracer__action-card--green"
+                >
+                  <span className="time-tracer__action-card-content">
+                    <span className="time-tracer__action-card-text">
+                      <span className="time-tracer__action-card-title">
+                        {busy ? "Speichern..." : "Anmelden"}
+                      </span>
+                      {!busy && (
+                        <span className="time-tracer__action-card-subtitle">
+                          Pause beende
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="time-tracer__action-card-icon-wrap">
+                      <IconAnmelden className="time-tracer__action-card-icon" />
+                    </span>
+                  </span>
+                </button>
+                  <button
+                    disabled={busy || loading}
+                    onClick={() => doPunch("1")}
+                    className="time-tracer__action-card time-tracer__action-card--red"
+                  >
+                    <span className="time-tracer__action-card-content">
+                      <span className="time-tracer__action-card-text">
+                        <span className="time-tracer__action-card-title">
+                          {busy ? "Speichern..." : "Abmelden"}
+                        </span>
+                        {!busy && (
+                          <span className="time-tracer__action-card-subtitle">
+                            Arbeitstag beenden
+                          </span>
+                        )}
+                      </span>
+
+                      <span className="time-tracer__action-card-icon-wrap">
+                        <IconAbmelden className="time-tracer__action-card-icon" />
+                      </span>
+                    </span>
                   </button>
-                  <button disabled={busy || loading} onClick={() => doPunch("1")} className="time-tracer__action-btn time-tracer__action-btn--red">
-                    {busy ? "Speichern..." : "Abmelden"}
-                  </button>
-                </>
-              ) : (
+                </>  
+            ) : (
                 <>
                   <button
                     disabled={busy || loading}
                     onClick={() => doPunch("0")}
-                    className="time-tracer__action-btn time-tracer__action-btn--indigo"
+                    className="time-tracer__action-card time-tracer__action-card--green"
                     title="Neue Anmeldung = Projektwechsel"
                   >
-                    {busy ? "Speichern..." : "Projekt wechseln"}
+                    <span className="time-tracer__action-card-content">
+                      <span className="time-tracer__action-card-text">
+                        <span className="time-tracer__action-card-title">
+                          {busy ? "Speichern..." : "Projekt wechseln"}
+                        </span>
+                        {!busy && (
+                          <span className="time-tracer__action-card-subtitle">
+                            Anderes Projekt auswählen
+                          </span>
+                        )}
+                      </span>
+
+                      <span className="time-tracer__action-card-icon-wrap">
+                        <IconAnmelden className="time-tracer__action-card-icon" />
+                      </span>
+                    </span>
                   </button>
-                  <button disabled={busy || loading} onClick={() => doPunch("2")} className="time-tracer__action-btn time-tracer__action-btn--amber">
-                    {busy ? "Speichern..." : "Pause"}
+                  <button
+                    disabled={busy || loading}
+                    onClick={() => doPunch("2")}
+                    className="time-tracer__action-card time-tracer__action-card--amber"
+                  >
+                    <span className="time-tracer__action-card-content">
+                      <span className="time-tracer__action-card-text">
+                        <span className="time-tracer__action-card-title">
+                          {busy ? "Speichern..." : "Pause"}
+                        </span>
+                        {!busy && (
+                          <span className="time-tracer__action-card-subtitle">
+                            Pause beginnen
+                          </span>
+                        )}
+                      </span>
+
+                      <span className="time-tracer__action-card-icon-wrap">
+                        <IconPause className="time-tracer__action-card-icon" />
+                      </span>
+                    </span>
                   </button>
-                  <button disabled={busy || loading} onClick={() => doPunch("1")} className="time-tracer__action-btn time-tracer__action-btn--red">
-                    {busy ? "Speichern..." : "Abmelden"}
+                  <button
+                    disabled={busy || loading}
+                    onClick={() => doPunch("1")}
+                    className="time-tracer__action-card time-tracer__action-card--red"
+                  >
+                    <span className="time-tracer__action-card-content">
+                      <span className="time-tracer__action-card-text">
+                        <span className="time-tracer__action-card-title">
+                          {busy ? "Speichern..." : "Abmelden"}
+                        </span>
+                        {!busy && (
+                          <span className="time-tracer__action-card-subtitle">
+                            Arbeitstag beenden
+                          </span>
+                        )}
+                      </span>
+
+                      <span className="time-tracer__action-card-icon-wrap">
+                        <IconAbmelden className="time-tracer__action-card-icon" />
+                      </span>
+                    </span>
                   </button>
                 </>
               )}

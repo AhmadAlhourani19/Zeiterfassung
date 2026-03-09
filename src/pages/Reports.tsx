@@ -87,6 +87,19 @@ export function Reports() {
 
   const dayIntervals = useMemo(() => buildIntervalsForDay(dayEntries, new Date()), [dayEntries]);
   const dayStats = useMemo(() => calcWorkAndBreak(dayIntervals), [dayIntervals]);
+  const dayProjectTotals = useMemo(() => {
+    const totals: Record<string, number> = {};
+    for (const interval of dayIntervals) {
+      const minutes = Math.round((+interval.end - +interval.start) / 60000);
+      if (minutes <= 0) continue;
+      const name = interval.project?.trim() ? interval.project : "(ohne Projekt)";
+      totals[name] = (totals[name] ?? 0) + minutes;
+    }
+
+    return Object.entries(totals)
+      .map(([name, minutes]) => ({ name, minutes }))
+      .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
+  }, [dayIntervals]);
 
   const monthProjectTotals = useMemo(() => {
     const groupedByDay: Record<string, StempeluhrEntry[]> = {};
@@ -214,7 +227,7 @@ export function Reports() {
     <div className="reports-page">
       <div className="reports-page__section">
         <h2 className="reports-page__title">Berichte</h2>
-        <p className="reports-page__subtitle">Tages- und Monatsuebersichten (nur Anzeige).</p>
+        <p className="reports-page__subtitle">Tages- und Monatsuebersichten</p>
 
         <div className="reports-page__summary-grid">
           <div className="reports-page__panel">
@@ -235,17 +248,13 @@ export function Reports() {
                 <IoCaretForward className="reports-page__icon" />
               </button>
 
-              <button type="button" onClick={() => void loadDay()} className="reports-page__primary-btn">
-                Laden
-              </button>
-
               <button
                 type="button"
                 onClick={handleExportDay}
                 disabled={loading || dayEntries.length === 0}
-                className="reports-page__secondary-btn"
+                className="reports-page__export-btn"
               >
-                Export
+                Speichern
               </button>
             </div>
 
@@ -256,6 +265,49 @@ export function Reports() {
             <div className="reports-page__metric-detail">
               Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
               {fmtHM(dayStats.missingBreak)}
+            </div>
+
+            <div className="reports-page__panel-subheader">
+              <h3 className="reports-page__panel-subtitle">Arbeitsphasen ({dayKey})</h3>
+            </div>
+
+            <div className="reports-page__list">
+              {dayIntervals.length === 0 ? (
+                <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
+              ) : (
+                dayIntervals.map((it, idx) => (
+                  <div key={`${dayKey}-${idx}`} className="reports-page__row">
+                    <div className="reports-page__row-main">
+                      <span className="reports-page__row-time">
+                        {formatTimeRounded(it.start)} - {formatTimeRounded(it.end)}
+                      </span>
+                      {it.project ? (
+                        <span className="reports-page__row-project"> | {it.project}</span>
+                      ) : (
+                        <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
+                      )}
+                    </div>
+                    <div className="reports-page__row-duration">{fmtHM(Math.round((+it.end - +it.start) / 60000))}</div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="reports-page__panel-subheader">
+              <h3 className="reports-page__panel-subtitle">Projekt-Summary (Tag)</h3>
+            </div>
+
+            <div className="reports-page__list">
+              {dayProjectTotals.length === 0 ? (
+                <div className="reports-page__empty">Keine Projektzeit an diesem Tag.</div>
+              ) : (
+                dayProjectTotals.map((project) => (
+                  <div key={`${dayKey}-sum-${project.name}`} className="reports-page__row">
+                    <div className="reports-page__project-name">{project.name}</div>
+                    <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -277,17 +329,13 @@ export function Reports() {
                 <IoCaretForward className="reports-page__icon" />
               </button>
 
-              <button type="button" onClick={() => void loadMonth()} className="reports-page__primary-btn">
-                Laden
-              </button>
-
               <button
                 type="button"
                 onClick={handleExportMonth}
                 disabled={loading || monthEntries.length === 0}
-                className="reports-page__secondary-btn"
+                className="reports-page__export-btn"
               >
-                Export
+                Speichern
               </button>
             </div>
 
@@ -297,80 +345,29 @@ export function Reports() {
             <div className="reports-page__metric">
               Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
             </div>
+
+            <div className="reports-page__panel-subheader">
+              <h3 className="reports-page__panel-subtitle">Projektzeiten (Monat {monthKey})</h3>
+            </div>
+
+            <div className="reports-page__list">
+              {monthProjectTotals.length === 0 ? (
+                <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
+              ) : (
+                monthProjectTotals.map((project) => (
+                  <div key={`${monthKey}-${project.name}`} className="reports-page__row">
+                    <div className="reports-page__project-name">{project.name}</div>
+                    <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {err && <div className="reports-page__error">{err}</div>}
         {loading && <div className="reports-page__loading">Lade...</div>}
       </div>
-
-      <div className="reports-page__section">
-        <div className="reports-page__section-header">
-          <h3 className="reports-page__section-title">Arbeitsphasen ({dayKey})</h3>
-          <div className="reports-page__section-actions">
-            <button type="button" onClick={() => void goDay(-1)} className="reports-page__ghost-btn">
-              Zuruck
-            </button>
-            <button type="button" onClick={() => void goDay(1)} className="reports-page__ghost-btn">
-              Weiter
-            </button>
-          </div>
-        </div>
-
-        <div className="reports-page__list">
-          {dayIntervals.length === 0 ? (
-            <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
-          ) : (
-            dayIntervals.map((it, idx) => (
-              <div key={`${dayKey}-${idx}`} className="reports-page__row">
-                <div className="reports-page__row-main">
-                  <span className="reports-page__row-time">
-                    {formatTimeRounded(it.start)} - {formatTimeRounded(it.end)}
-                  </span>
-                  {it.project ? (
-                    <span className="reports-page__row-project"> | {it.project}</span>
-                  ) : (
-                    <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
-                  )}
-                </div>
-                <div className="reports-page__row-duration">{fmtHM(Math.round((+it.end - +it.start) / 60000))}</div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="reports-page__section">
-        <div className="reports-page__section-header">
-          <h3 className="reports-page__section-title">Projektzeiten (Monat {monthKey})</h3>
-          <div className="reports-page__section-actions">
-            <button type="button" onClick={() => void goMonth(-1)} className="reports-page__ghost-btn">
-              Zuruck
-            </button>
-            <button type="button" onClick={() => void goMonth(1)} className="reports-page__ghost-btn">
-              Weiter
-            </button>
-          </div>
-        </div>
-
-        <div className="reports-page__metric">
-          Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
-        </div>
-
-        <div className="reports-page__list">
-          {monthProjectTotals.length === 0 ? (
-            <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
-          ) : (
-            monthProjectTotals.map((project) => (
-              <div key={`${monthKey}-${project.name}`} className="reports-page__row">
-                <div className="reports-page__project-name">{project.name}</div>
-                <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
     </div>
   );
 }
-

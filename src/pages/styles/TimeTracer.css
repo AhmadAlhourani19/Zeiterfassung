@@ -7,7 +7,7 @@
 }
 
 .time-tracer__layout {
-  @apply flex flex-col gap-4;
+  @apply flex flex-col gap-4 max-w-[800px];
 }
 
 .time-tracer__summary {
@@ -25,13 +25,13 @@
   }
 
   .time-tracer__summary {
-    order: 1;
+    @apply order-1 flex-1 min-w-0;
   }
 
   .time-tracer__actions-panel {
     order: 2;
     width: 360px;
-  }
+  }  
 }
 
 .time-tracer__date-label {
@@ -42,8 +42,9 @@
   @apply mt-1 text-2xl font-semibold;
 }
 
-.time-tracer__status-row {
-  @apply mt-2 text-sm text-slate-600;
+.time-tracer__status-row {  
+  /* @apply mt-2 text-sm text-slate-600;  */
+  @apply mt-2 flex items-center gap-2 min-w-0 text-sm text-slate-600;
 }
 
 .time-tracer__status-badge {
@@ -67,11 +68,13 @@
 }
 
 .time-tracer__project-row {
-  @apply mt-2 text-sm text-slate-600;
+  /* @apply mt-2 text-sm text-slate-600;  */
+  @apply mt-2 flex items-center gap-2 min-w-0 text-sm text-slate-600;
 }
 
 .time-tracer__project-pill {
-  @apply inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 ring-1 ring-indigo-200;
+  /* @apply inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-indigo-200; */
+  @apply inline-block max-w-full min-w-0 truncate rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-800 ring-1 ring-indigo-200;
 }
 
 .time-tracer__stats {
@@ -89,11 +92,18 @@
 }
 
 .time-tracer__project-trigger {
-  @apply mt-1 flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-left text-sm shadow-sm outline-none transition hover:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+  @apply mt-1 flex w-full items-center justify-between gap-2
+  rounded-md border border-slate-200 border-b-slate-400
+  /* bg-slate-50  */
+  px-3 py-2 text-left text-sm
+  outline-none transition
+  hover:border-b-sky-800 hover:bg-slate-50
+  focus:border-b-slate-600 focus:ring-0
+  disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
 }
 
 .time-tracer__project-trigger-value {
-  @apply min-w-0 flex-1 truncate text-slate-900;
+  @apply min-w-0 flex-1 truncate;
 }
 
 .time-tracer__project-trigger-value--muted {
@@ -122,7 +132,7 @@
 }
 
 .time-tracer__project-menu-title {
-  @apply text-sm font-semibold text-slate-800;
+  @apply text-xl font-semibold text-slate-800;
 }
 
 .time-tracer__project-menu-subtitle {
@@ -130,11 +140,17 @@
 }
 
 .time-tracer__project-menu-close {
-  @apply rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
+  @apply rounded-xl border border-slate-300 bg-white p-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
 }
 
 .time-tracer__project-search {
-  @apply mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+  /* @apply mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300; */
+  @apply w-full
+  rounded-md border border-slate-200 border-b-slate-400
+  px-3 py-2 text-sm
+  outline-none transition
+  hover:border-b-sky-800
+  focus:border-b-sky-800 focus:ring-0;
 }
 
 .time-tracer__project-list {
@@ -147,7 +163,7 @@
 }
 
 .time-tracer__project-item--active {
-  @apply border-indigo-200 bg-indigo-50;
+  @apply border-sky-200 bg-sky-50;
 }
 
 .time-tracer__project-item-name {
@@ -155,7 +171,7 @@
 }
 
 .time-tracer__project-item-tag {
-  @apply shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700;
+  @apply shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800;
 }
 
 .time-tracer__project-empty {
@@ -166,25 +182,117 @@
   @apply mt-4 flex flex-col gap-2;
 }
 
-.time-tracer__action-btn {
-  @apply rounded-2xl px-5 py-3 text-sm font-semibold text-white transition disabled:opacity-60;
+
+
+/* .time-tracer__action-btn {
+  @apply inline-flex items-center justify-center gap-2
+  rounded-md px-5 py-2 text-sm font-medium
+  border border-slate-200  bg-white text-slate-700
+  transition hover:bg-slate-50 hover:text-sky-800 
+  focus:ring-2 focus:ring-slate-200
+  disabled:cursor-not-allowed disabled:opacity-50;
+} */
+
+
+/* Anmelde Schalter als Card Button
+links ein farbiger Akzent-Streifen
+Mitte: Label + kurze Zusatzzeile
+rechts: runder Icon-Kreis */
+.time-tracer__actions {
+  @apply mt-4 flex flex-col gap-3;
 }
 
-.time-tracer__action-btn--green {
-  @apply bg-emerald-600 hover:bg-emerald-700;
+.time-tracer__action-card {
+  @apply relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition     
+  focus:outline-none focus:ring-2 focus:ring-slate-200
+  /* hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md */
+  hover:bg-slate-50
+  disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0;
 }
 
-.time-tracer__action-btn--red {
-  @apply bg-rose-600 hover:bg-rose-700;
+.time-tracer__action-card::before {
+  content: "";
+  @apply absolute left-0 top-0 h-full w-1 bg-slate-300;
 }
 
-.time-tracer__action-btn--indigo {
-  @apply bg-indigo-600 hover:bg-indigo-700;
+/* .time-tracer__action-card--green:hover {
+  @apply border-emerald-100;  
 }
 
-.time-tracer__action-btn--amber {
-  @apply bg-amber-500 hover:bg-amber-600;
+.time-tracer__action-card--amber:hover {
+  @apply border-amber-100;
 }
+
+.time-tracer__action-card--red:hover {
+  @apply border-rose-100;
+} */
+
+.time-tracer__action-card-content {
+  @apply flex items-center justify-between gap-4;
+}
+
+.time-tracer__action-card-text {
+  @apply min-w-0 flex flex-col;
+}
+
+.time-tracer__action-card-title {
+  @apply text-sm font-semibold text-slate-900 transition-colors; 
+}
+
+.time-tracer__action-card:hover .time-tracer__action-card-title {
+  @apply text-sky-900;
+}
+
+.time-tracer__action-card-subtitle {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.time-tracer__action-card-icon-wrap {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100;
+}
+
+/* Icons für Schalter */
+.time-tracer__action-card-icon {
+  @apply h-5 w-5;
+}
+
+.time-tracer__action-card--green::before {
+  @apply bg-emerald-500;
+}
+
+.time-tracer__action-card--green .time-tracer__action-card-icon-wrap {
+  @apply bg-emerald-100;
+}
+
+.time-tracer__action-card--green .time-tracer__action-card-icon {
+  @apply text-emerald-600;
+}
+
+.time-tracer__action-card--amber::before {
+  @apply bg-amber-500;
+}
+
+.time-tracer__action-card--amber .time-tracer__action-card-icon-wrap {
+  @apply bg-amber-100;
+}
+
+.time-tracer__action-card--amber .time-tracer__action-card-icon {
+  @apply text-amber-600;
+}
+
+.time-tracer__action-card--red::before {
+  @apply bg-rose-500;
+}
+
+.time-tracer__action-card--red .time-tracer__action-card-icon-wrap {
+  @apply bg-rose-100;
+}
+
+.time-tracer__action-card--red .time-tracer__action-card-icon {
+  @apply text-rose-600;
+}
+/* Anmelde Schalter */
+
 
 .time-tracer__error {
   @apply mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;

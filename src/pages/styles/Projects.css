@@ -23,7 +23,7 @@
 }
 
 .projects-page__error {
-  @apply mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
+  @apply mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800;
 }
 
 .projects-page__error--action {
@@ -44,32 +44,68 @@
   @apply flex-1;
 }
 
-.projects-page__add-actions {
+/* .projects-page__add-actions {
   @apply flex shrink-0 gap-2;
+}
+
+.projects-page__add-btn {
+  @apply rounded-xl bg-sky-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:opacity-60;
+}
+
+.projects-page__lookup-toggle-btn {
+  @apply rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:opacity-60;
+} */
+
+.projects-page__add-actions {
+  @apply flex shrink-0;
+  gap: 1px;
+}
+
+.projects-page__add-btn,
+.projects-page__lookup-toggle-btn {
+  @apply inline-flex items-center justify-center
+  h-[38px] bg-sky-700 text-white
+  transition hover:bg-sky-800
+  disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.projects-page__add-btn {
+  @apply rounded-l-md rounded-r-none px-4 text-sm font-semibold;
+}
+
+.projects-page__lookup-toggle-btn {
+  @apply w-[40px] rounded-r-md rounded-l-none border-l border-white/30 px-0;
+}
+
+.projects-page__lookup-toggle-btn-icon {
+  @apply flex items-center justify-center h-4 w-4;
 }
 
 .projects-page__search-row {
   @apply mt-3;
 }
 
+/* .projects-page__input {
+  @apply w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+} */
+
 .projects-page__input {
-  @apply w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300;
+  @apply w-full
+  rounded-md border border-slate-200 border-b-slate-400
+  px-3 py-2 text-sm
+  outline-none transition
+  hover:border-b-sky-800
+  focus:border-b-sky-800 focus:ring-0;
 }
 
-.projects-page__add-btn {
-  @apply rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:opacity-60;
-}
 
-.projects-page__lookup-toggle-btn {
-  @apply rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 disabled:opacity-60;
-}
 
 .projects-page__lookup-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4;
 }
 
 .projects-page__lookup-menu {
-  @apply w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl;
+  @apply w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl;
   max-height: 86vh;
 }
 
@@ -78,7 +114,7 @@
 }
 
 .projects-page__lookup-title {
-  @apply text-sm font-semibold text-slate-800;
+  @apply text-xl font-semibold text-slate-800;
 }
 
 .projects-page__lookup-count {
@@ -86,7 +122,7 @@
 }
 
 .projects-page__lookup-close-btn {
-  @apply rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
+  @apply rounded-xl border border-slate-300 bg-white p-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
 }
 
 .projects-page__lookup-search-row {
@@ -99,7 +135,7 @@
 }
 
 .projects-page__lookup-item {
-  @apply flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2;
+  @apply flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2;
 }
 
 .projects-page__lookup-name {
@@ -107,7 +143,7 @@
 }
 
 .projects-page__lookup-add-btn {
-  @apply shrink-0 rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-black disabled:opacity-60;
+  @apply shrink-0 rounded-md bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-800 disabled:opacity-60;
 }
 
 .projects-page__lookup-state {
@@ -123,7 +159,7 @@
 }
 
 .projects-page__item {
-  @apply flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3;
+  @apply flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3;
 }
 
 .projects-page__item-name {
@@ -131,5 +167,13 @@
 }
 
 .projects-page__remove-btn {
-  @apply text-sm text-rose-700 transition hover:text-rose-900 disabled:opacity-60;
+  @apply text-sm transition hover:text-rose-700 disabled:opacity-60;
+}
+
+.projects-page__lookup-toggle-btn-icon {
+  @apply flex items-center justify-center h-5 w-5;
+}
+
+.projects-icon {
+  @apply h-5 w-5;
 }

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createProject, deleteProject } from "../api/domino";
 import type { ProjectEntry } from "../api/types";
+import { IconClose, IconSearch, IconDelete } from "../components/Icons";
 import "./styles/Projects.css";
 
 type Props = {
@@ -22,7 +23,6 @@ function getErrorMessage(e: unknown, fallback: string) {
 
 export function Projects({ projects, lookupProjects = [], loading, error, onReload }: Props) {
   const [value, setValue] = useState("");
-  const [search, setSearch] = useState("");
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupQuery, setLookupQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,11 +70,11 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     return set;
   }, [projectNames]);
 
-  const filteredNames = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return projectNames;
-    return projectNames.filter((name) => name.toLowerCase().includes(query));
-  }, [projectNames, search]);
+  // const filteredNames = useMemo(() => {
+  //   const query = "search.trim().toLowerCase()";
+  //   if (!query) return projectNames;
+  //   return projectNames.filter((name) => name.toLowerCase().includes(query));
+  // }, [projectNames, search]);
 
   const lookupNames = useMemo(() => {
     const seen = new Set<string>();
@@ -200,7 +200,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
         </button>
       </div>
 
-      <p className="projects-page__subtitle">Projekte werden vom Server geladen.</p>
+      <p className="projects-page__subtitle">Aktuelle Projekte verwalten</p>
 
       {error && <div className="projects-page__error">{error}</div>}
 
@@ -210,16 +210,16 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Projektname..."
+          placeholder="Projektname.."
           className="projects-page__input projects-page__add-input"
           onKeyDown={(e) => {
             if (e.key === "Enter") add();
           }}
         />
 
-        <div className="projects-page__add-actions">
+        {/* <div className="projects-page__add-actions">
           <button onClick={add} disabled={busy || loading} className="projects-page__add-btn">
-            Hinzufuegen
+            Hinzufügen
           </button>
           <button
             type="button"
@@ -233,9 +233,41 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
             disabled={busy || loading}
             className="projects-page__lookup-toggle-btn"
           >
-            {lookupOpen ? "Schliessen" : "Suchen"}
+            <span className="projects-page__lookup-toggle-btn-icon">
+              <IconSearch />
+            </span>
+          </button>
+        </div> */}
+        <div className="projects-page__add-actions">
+          <button
+            type="button"
+            onClick={add}
+            disabled={busy || loading}
+            className="projects-page__add-btn"
+          >
+            Hinzufügen
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (lookupOpen) {
+                closeLookup();
+              } else {
+                setLookupOpen(true);
+              }
+            }}
+            disabled={busy || loading}
+            className="projects-page__lookup-toggle-btn"
+            aria-label="Projektakte durchsuchen"
+            title="Projektakte durchsuchen"
+          >
+            <span className="projects-page__lookup-toggle-btn-icon">
+              <IconSearch />
+            </span>
           </button>
         </div>
+
       </div>
 
       {lookupOpen && (
@@ -249,15 +281,15 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
           >
             <div className="projects-page__lookup-header">
               <div>
-                <div className="projects-page__lookup-title">Projekt Lookup</div>
-                <div className="projects-page__lookup-count">{availableLookupCount} verfuegbar</div>
+                <div className="projects-page__lookup-title">Projektakte durchsuchen</div>
+                <div className="projects-page__lookup-count">{availableLookupCount} verfügbar</div>
               </div>
               <button
                 type="button"
                 onClick={closeLookup}
                 className="projects-page__lookup-close-btn"
               >
-                Schliessen
+                <IconClose className="projects-icon" />
               </button>
             </div>
 
@@ -265,7 +297,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
               <input
                 value={lookupQuery}
                 onChange={(e) => setLookupQuery(e.target.value)}
-                placeholder="Lookup suchen..."
+                placeholder="Projekt suchen..."
                 className="projects-page__input"
                 disabled={busy || loading}
               />
@@ -273,7 +305,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
 
             <div className="projects-page__lookup-list">
               {lookupNames.length === 0 && (
-                <div className="projects-page__hint">Keine Lookup-Projekte verfuegbar.</div>
+                <div className="projects-page__hint">Keine Lookup-Projekte verfügbar.</div>
               )}
 
               {lookupNames.length > 0 && filteredLookupNames.length === 0 && (
@@ -289,7 +321,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
                     </div>
 
                     {alreadyAdded ? (
-                      <span className="projects-page__lookup-state">Bereits hinzugefuegt</span>
+                      <span className="projects-page__lookup-state">Bereits hinzugefügt</span>
                     ) : (
                       <button
                         type="button"
@@ -297,7 +329,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
                         disabled={busy || loading}
                         className="projects-page__lookup-add-btn"
                       >
-                        Auswaehlen
+                        Auswählen
                       </button>
                     )}
                   </div>
@@ -312,10 +344,10 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
       <div className="projects-page__list">
         {loading && <div className="projects-page__hint">Lade Projekte...</div>}
 
-        {!loading && filteredNames.length === 0 ? (
-          <div className="projects-page__hint">{search.trim() ? "Keine Treffer." : "Noch keine Projekte."}</div>
+        {!loading && projectNames.length === 0 ? (
+          <div className="projects-page__hint">{"Noch keine Projekte."}</div>
         ) : (
-          filteredNames.map((name) => {
+          projectNames.map((name) => {
             const removableItem = removableByName.get(normalizeName(name));
             if (!removableItem) return null;
             return (
@@ -325,8 +357,9 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
                   onClick={() => remove(removableItem)}
                   disabled={busy || loading}
                   className="projects-page__remove-btn"
+                  title="Entfernen"
                 >
-                  Entfernen
+                  <IconDelete className="projects-icon" />
                 </button>
               </div>
             );

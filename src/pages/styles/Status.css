@@ -41,7 +41,7 @@
 }
 
 .status-page__filter-chip--active {
-  @apply bg-slate-900 text-white;
+  @apply bg-sky-700 text-white;
 }
 
 .status-page__filter-chip--inactive {

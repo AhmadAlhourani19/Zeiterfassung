@@ -176,10 +176,11 @@ export default function App() {
   }, [projectLookup]);
 
   const userName = useMemo(() => {
-    const firstBooking = todayEntries[0] ?? monthEntries[0];
-    if (firstBooking?.Key) {
+    //const firstBooking = todayEntries[0] ?? monthEntries[0];
+    /*if (firstBooking?.Key) {
       return getDisplayUserFromKey(firstBooking.Key);
     }
+      */
 
     const fromStatus = statusEntries.reduce<string | null>((found, entry) => {
       if (found) return found;
