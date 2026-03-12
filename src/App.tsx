@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
 import { AppShell } from "./layout/AppShell";
 import type { NavId } from "./layout/AppShell";
@@ -9,8 +9,7 @@ import { Status } from "./pages/Status";
 import {
   createProject,
   getCurrentStatus,
-  getDay,
-  getMonth,
+  getDay, 
   getProjectPicklist,
   getProjects,
   getUserStatusLookup,
@@ -121,13 +120,14 @@ function buildProjectLabel(entry: ProjectPicklistEntry) {
 }
 
 export default function App() {
-  const { todayKey, monthKey } = useMemo(currentKeys, []);
+  
+  const { todayKey } = useMemo(currentKeys, []);
   const [active, setActive] = useState<NavId>("time");
 
   const [todayEntries, setTodayEntries] = useState<StempeluhrEntry[]>([]);
-  const [monthEntries, setMonthEntries] = useState<StempeluhrEntry[]>([]);
+ 
   const [loadingToday, setLoadingToday] = useState(false);
-  const [loadingMonth, setLoadingMonth] = useState(false);
+
 
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -143,6 +143,8 @@ export default function App() {
 
   const [authError, setAuthError] = useState<string | null>(null);
   const hasProjectLookup = projectLookup.length > 0;
+
+  const userName = lookupUserName ?? "";
 
   const projectSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -175,27 +177,6 @@ export default function App() {
     return list;
   }, [projectLookup]);
 
-  const userName = useMemo(() => {
-    //const firstBooking = todayEntries[0] ?? monthEntries[0];
-    /*if (firstBooking?.Key) {
-      return getDisplayUserFromKey(firstBooking.Key);
-    }
-      */
-
-    const fromStatus = statusEntries.reduce<string | null>((found, entry) => {
-      if (found) return found;
-      return (
-        normalizeDisplayName(entry.commonName) ??
-        normalizeDisplayName(entry.CommonName) ??
-        normalizeDisplayName(entry.Name) ??
-        normalizeDisplayName(entry.Key)
-      );
-    }, null);
-    if (fromStatus) return fromStatus;
-
-    return lookupUserName;
-  }, [todayEntries, monthEntries, statusEntries, lookupUserName]);
-
   async function loadToday() {
     setLoadingToday(true);
     try {
@@ -215,29 +196,8 @@ export default function App() {
     }
   }
 
-  async function loadMonth() {
-    setLoadingMonth(true);
-    try {
-      const data = await getMonth(monthKey);
-      data.sort((a, b) => +new Date(b.Zeit) - +new Date(a.Zeit));
-      setMonthEntries(data);
-      setAuthError(null);
-    } catch (e: unknown) {
-      const authMessage = getAuthErrorMessage(e);
-      if (authMessage) {
-        setAuthError(authMessage);
-      } else {
-        console.error(e);
-      }
-    } finally {
-      setLoadingMonth(false);
-    }
-  }
 
-  function refreshAll() {
-    loadToday();
-    loadMonth();
-  }
+
 
   async function loadProjects() {
     setLoadingProjects(true);
@@ -341,12 +301,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    refreshAll();
-    loadProjects();
-    loadProjectLookup();
-    loadStatus();
-    loadUserIdentity();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadToday();      
+    loadUserIdentity();    
   }, []);
 
   return (
@@ -364,7 +320,7 @@ export default function App() {
         onChange={(id) => {
           setActive(id);
           if (id === "time") {
-            refreshAll();
+            loadToday();   
             if (!hasProjectLookup && !loadingProjectLookup) loadProjectLookup();
           }
           if (id === "projects") {
@@ -380,8 +336,8 @@ export default function App() {
           <TimeTracer
             todayKey={todayKey}
             todayEntries={todayEntries}
-            loading={loadingToday || loadingMonth}
-            onRefresh={refreshAll}
+            loading={loadingToday}
+            onRefresh={loadToday}
             projectSuggestions={projectSuggestions}
             onProjectUsed={(p) => {
               if (!hasProjectLookup) {
@@ -415,3 +371,4 @@ export default function App() {
     </>
   );
 }
+

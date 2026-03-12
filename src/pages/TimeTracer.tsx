@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { StempeluhrEntry } from "../api/types";
-import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
+import { buildIntervalsForDay, calcWorkAndBreak, fmtHM, fmtHMS } from "../utils/timeCalc";
 import { createPunch, getUserStatusLookup, updatePunchStatus } from "../api/domino";
 import "./styles/TimeTracer.css";
 import { MdOutlineExpandMore } from "react-icons/md";
@@ -9,6 +9,11 @@ import { IconClose, IconAnmelden, IconPause, IconAbmelden } from "../components/
 function latestEntry(entries: StempeluhrEntry[]) {
   if (!entries.length) return null;
   return [...entries].sort((a, b) => +new Date(b.Zeit) - +new Date(a.Zeit))[0];
+}
+
+function readTaetigkeit(entry: StempeluhrEntry | null) {
+  if (!entry) return "";
+  return (entry.Taetigkeit ?? entry["T\u00e4tigkeit"] ?? "").trim();
 }
 
 export function TimeTracer({
@@ -40,35 +45,25 @@ export function TimeTracer({
         : "time-tracer__status-badge--checked-out",
   ].join(" ");
   const latestProject = latest?.Projekt?.trim() || "";
+  const latestTaetigkeit = readTaetigkeit(latest);
 
+  // Timer
   const [nowMs, setNowMs] = useState(() => Date.now());
-
-  // Keep work/break stats live while the user is checked in or currently on break.
   useEffect(() => {
     if (!isCheckedIn && !isOnBreak) return;
+
     const tick = () => setNowMs(Date.now());
     tick();
-    const id = window.setInterval(tick, 15000);
+
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [isCheckedIn, isOnBreak]);
 
-  const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date(nowMs)), [todayEntries, nowMs]);
-  const baseStats = useMemo(() => calcWorkAndBreak(intervals), [intervals]);
-
-  const breakMinutes = useMemo(() => {
-    if (!isOnBreak || !latest?.Zeit) return baseStats.breakMinutes;
-    const breakStartMs = +new Date(latest.Zeit);
-    if (!Number.isFinite(breakStartMs)) return baseStats.breakMinutes;
-    const ongoingBreak = Math.max(0, Math.round((nowMs - breakStartMs) / 60000));
-    return baseStats.breakMinutes + ongoingBreak;
-  }, [isOnBreak, latest?.Zeit, nowMs, baseStats.breakMinutes]);
-
-  const netMinutes = useMemo(() => {
-    const missingBreak = Math.max(0, baseStats.requiredBreak - breakMinutes);
-    return Math.max(0, baseStats.workMinutes - missingBreak);
-  }, [baseStats.requiredBreak, baseStats.workMinutes, breakMinutes]);
+  const intervals = useMemo(() => buildIntervalsForDay(todayEntries, new Date()), [todayEntries, nowMs]);
+  const { breakMinutes, netMinutes } = useMemo(() => calcWorkAndBreak(intervals), [intervals]);
 
   const [projekt, setProjekt] = useState("");
+  const [taetigkeit, setTaetigkeit] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [statusUnid, setStatusUnid] = useState<string | null>(null);
@@ -80,6 +75,20 @@ export function TimeTracer({
     if (!query) return projectSuggestions;
     return projectSuggestions.filter((name) => name.toLowerCase().includes(query));
   }, [projectSuggestions, projectMenuQuery]);
+
+
+
+  // Update Anzeigen Sekundengenau
+  const elapsedSeconds = useMemo(() => {
+    if ((!isCheckedIn && !isOnBreak) || !latest?.Zeit) return 0;
+
+    const startMs = +new Date(latest.Zeit);
+    if (!Number.isFinite(startMs)) return 0;
+
+    return Math.max(0, Math.floor((nowMs - startMs) / 1000));
+  }, [isCheckedIn, isOnBreak, latest?.Zeit, nowMs]);
+
+
 
   useEffect(() => {
     let mounted = true;
@@ -118,14 +127,19 @@ export function TimeTracer({
     };
   }, [projectMenuOpen]);
 
-  // Beim Laden das zuletzt aktive Projekt als Auswahl übernehmen
-  const [initialProjectSet, setInitialProjectSet] = useState(false);
+  // Beim Laden das zuletzt aktive Projekt/Taetigkeit als Auswahl uebernehmen
+  const [initialSelectionSet, setInitialSelectionSet] = useState(false);
   useEffect(() => {
-    if (!initialProjectSet && latestProject) {
-      setProjekt(latestProject);
-      setInitialProjectSet(true);
-    }
-  }, [latestProject, initialProjectSet]);
+    if (initialSelectionSet) return;
+
+    const hasInitialProject = Boolean(latestProject);
+    const hasInitialTaetigkeit = Boolean(latestTaetigkeit);
+    if (!hasInitialProject && !hasInitialTaetigkeit) return;
+
+    if (hasInitialProject) setProjekt(latestProject);
+    if (hasInitialTaetigkeit) setTaetigkeit(latestTaetigkeit);
+    setInitialSelectionSet(true);
+  }, [latestProject, latestTaetigkeit, initialSelectionSet]);
 
   function closeProjectMenu() {
     setProjectMenuOpen(false);
@@ -137,8 +151,9 @@ export function TimeTracer({
     closeProjectMenu();
   }
 
-  async function updateStatus(type: "0" | "1" | "2", project: string) {
+  async function updateStatus(type: "0" | "1" | "2", project: string, taetigkeitValue: string) {
     const cleanedProject = project.trim() || latest?.Projekt?.trim() || "";
+    const cleanedTaetigkeit = taetigkeitValue.trim() || latestTaetigkeit;
     let unid = statusUnid;
     if (!unid) {
       const lookup = await getUserStatusLookup();
@@ -152,6 +167,7 @@ export function TimeTracer({
       Zeit: string;
       Projekt?: string;
       Projektname?: string;
+      Taetigkeit?: string;
     } = {
       Buchungstyp: type,
       Zeit: new Date().toISOString(),
@@ -165,6 +181,7 @@ export function TimeTracer({
       payload.Projektname = "";
     }
 
+    payload.Taetigkeit = cleanedTaetigkeit;
     await updatePunchStatus(unid, payload);
   }
 
@@ -173,9 +190,10 @@ export function TimeTracer({
     setErr(null);
     try {
       const trimmed = projekt.trim();
-      await createPunch({ Buchungstyp: type, Projekt: trimmed });
+      const trimmedTaetigkeit = taetigkeit.trim();
+      await createPunch({ Buchungstyp: type, Projekt: trimmed, Taetigkeit: trimmedTaetigkeit });
       try {
-        await updateStatus(type, trimmed);
+        await updateStatus(type, trimmed, trimmedTaetigkeit);
       } catch (error) {
         console.warn("Status update failed after punch creation", error);
       }
@@ -202,11 +220,20 @@ export function TimeTracer({
             <div className="time-tracer__date-label">Heute</div>
             <div className="time-tracer__date-value">{todayKey}</div>
 
+            {/* <div className="time-tracer__status-row">
+              <span>Status: </span>
+              <span className={statusBadgeClass}>
+                {statusLabel}
+                {latest && ` ${new Date(latest.Zeit).toLocaleTimeString()}`}
+              </span>
+            </div> */}
+
             <div className="time-tracer__status-row">
               <span>Status: </span>
               <span className={statusBadgeClass}>
                 {statusLabel}
                 {latest && ` ${new Date(latest.Zeit).toLocaleTimeString()}`}
+                {(isCheckedIn || isOnBreak) && elapsedSeconds > 0 && ` + ${fmtHMS(elapsedSeconds)}`}
               </span>
             </div>
 
@@ -219,14 +246,32 @@ export function TimeTracer({
               </div>
             )}
 
+            {isCheckedIn && latestTaetigkeit && (
+              <div className="time-tracer__project-row">
+                <span>Taetigkeit: </span>
+                <span className="time-tracer__project-pill" title={latestTaetigkeit}>
+                  {latestTaetigkeit}
+                </span>
+              </div>
+            )}
+
             <div className="time-tracer__stats">
-              <Stat title="Arbeitszeit (netto)" value={fmtHM(netMinutes)} />
-              <Stat title="Pausen genommen" value={fmtHM(breakMinutes)} />
+              {/* Varausichtliche Arbeitszei ist aktuell wegen Interval Berechnung
+              Pause basiert nicht auf Intervallen, sondern auf Lücken zwischen Intervallen, deswegen Laufend + elapsedSeconds  */}
+              <Stat title="Voraussichtliche Arbeitszeit" value={fmtHM(netMinutes)} />
+              <Stat
+                title="Pausen genommen"
+                value={
+                  isOnBreak
+                    ? fmtHM(breakMinutes + Math.floor(elapsedSeconds / 60))
+                    : fmtHM(breakMinutes)
+                }
+              />
             </div>
           </div>
 
           <div className="time-tracer__actions-panel">
-            <label className="time-tracer__input-label">Projekt (optional)</label>
+            <label className="time-tracer__input-label">Projekt auswählen (optional)</label>
             <button
               type="button"
               onClick={() => setProjectMenuOpen(true)}
@@ -251,6 +296,17 @@ export function TimeTracer({
             {projectSuggestions.length === 0 && (
               <div className="time-tracer__project-hint">Keine Projekte verfügbar.</div>
             )}
+
+            <label className="time-tracer__input-label time-tracer__input-label--spaced">
+              Tätigkeit (optional)
+            </label>
+            <input
+              value={taetigkeit}
+              onChange={(e) => setTaetigkeit(e.target.value)}
+              placeholder="z.B. Planung / Abstimmung / Dokumentation"
+              className="time-tracer__text-input"
+              disabled={busy || loading}
+            />
 
             {projectMenuOpen && (
               <div className="time-tracer__project-overlay" onClick={closeProjectMenu}>
@@ -335,7 +391,7 @@ export function TimeTracer({
                   <span className="time-tracer__action-card-content">
                     <span className="time-tracer__action-card-text">
                       <span className="time-tracer__action-card-title">
-                        {busy ? "Speichern..." : "Anmelden"}
+                        {busy ? "Speichern..." : "Einstempeln"}
                       </span>
                       {!busy && (
                         <span className="time-tracer__action-card-subtitle">
@@ -349,30 +405,30 @@ export function TimeTracer({
                     </span>
                   </span>
                 </button>
-            ) : isOnBreak ? (
+              ) : isOnBreak ? (
                 <>
                   <button
-                  disabled={busy || loading}
-                  onClick={() => doPunch("0")}
-                  className="time-tracer__action-card time-tracer__action-card--green"
-                >
-                  <span className="time-tracer__action-card-content">
-                    <span className="time-tracer__action-card-text">
-                      <span className="time-tracer__action-card-title">
-                        {busy ? "Speichern..." : "Anmelden"}
-                      </span>
-                      {!busy && (
-                        <span className="time-tracer__action-card-subtitle">
-                          Pause beende
+                    disabled={busy || loading}
+                    onClick={() => doPunch("0")}
+                    className="time-tracer__action-card time-tracer__action-card--green"
+                  >
+                    <span className="time-tracer__action-card-content">
+                      <span className="time-tracer__action-card-text">
+                        <span className="time-tracer__action-card-title">
+                          {busy ? "Speichern..." : "Einstempeln"}
                         </span>
-                      )}
-                    </span>
+                        {!busy && (
+                          <span className="time-tracer__action-card-subtitle">
+                            Pause beende
+                          </span>
+                        )}
+                      </span>
 
-                    <span className="time-tracer__action-card-icon-wrap">
-                      <IconAnmelden className="time-tracer__action-card-icon" />
+                      <span className="time-tracer__action-card-icon-wrap">
+                        <IconAnmelden className="time-tracer__action-card-icon" />
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
                   <button
                     disabled={busy || loading}
                     onClick={() => doPunch("1")}
@@ -381,7 +437,7 @@ export function TimeTracer({
                     <span className="time-tracer__action-card-content">
                       <span className="time-tracer__action-card-text">
                         <span className="time-tracer__action-card-title">
-                          {busy ? "Speichern..." : "Abmelden"}
+                          {busy ? "Speichern..." : "Ausstempeln"}
                         </span>
                         {!busy && (
                           <span className="time-tracer__action-card-subtitle">
@@ -395,8 +451,8 @@ export function TimeTracer({
                       </span>
                     </span>
                   </button>
-                </>  
-            ) : (
+                </>
+              ) : (
                 <>
                   <button
                     disabled={busy || loading}
@@ -451,7 +507,7 @@ export function TimeTracer({
                     <span className="time-tracer__action-card-content">
                       <span className="time-tracer__action-card-text">
                         <span className="time-tracer__action-card-title">
-                          {busy ? "Speichern..." : "Abmelden"}
+                          {busy ? "Speichern..." : "Ausstempeln"}
                         </span>
                         {!busy && (
                           <span className="time-tracer__action-card-subtitle">
@@ -496,3 +552,5 @@ function Stat({
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getDay, getMonth } from "../api/domino";
 import type { StempeluhrEntry } from "../api/types";
 import { PunchTable } from "../components/PunchTable";
@@ -39,6 +39,10 @@ function downloadCsv(filename: string, rows: string[][]) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+function readTaetigkeit(entry: StempeluhrEntry) {
+  return (entry.Taetigkeit ?? entry["T\u00e4tigkeit"] ?? "").trim();
 }
 
 export default function Dashboard() {
@@ -98,7 +102,7 @@ export default function Dashboard() {
 
   function handleExportToday() {
     if (!todayEntries.length) return;
-    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt"]];
+    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Taetigkeit"]];
     const sorted = [...todayEntries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
     for (const entry of sorted) {
       rows.push([
@@ -106,6 +110,7 @@ export default function Dashboard() {
         new Date(entry.Zeit).toLocaleTimeString("de-DE"),
         bookingLabel(entry.Buchungstyp),
         entry.Projekt ?? "",
+        readTaetigkeit(entry),
       ]);
     }
     downloadCsv(`bericht-tag-${todayKey}.csv`, rows);
@@ -113,7 +118,7 @@ export default function Dashboard() {
 
   function handleExportMonth() {
     if (!monthEntries.length) return;
-    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt"]];
+    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Taetigkeit"]];
     const sorted = [...monthEntries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
     for (const entry of sorted) {
       rows.push([
@@ -121,6 +126,7 @@ export default function Dashboard() {
         new Date(entry.Zeit).toLocaleTimeString("de-DE"),
         bookingLabel(entry.Buchungstyp),
         entry.Projekt ?? "",
+        readTaetigkeit(entry),
       ]);
     }
     downloadCsv(`bericht-monat-${currentMonthKey}.csv`, rows);
@@ -206,3 +212,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+
+

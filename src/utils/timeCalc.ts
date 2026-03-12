@@ -4,6 +4,7 @@ export type Interval = {
   start: Date;
   end: Date;
   project: string;
+  taetigkeit: string;
 };
 
 function minutesBetween(a: Date, b: Date) {
@@ -11,9 +12,15 @@ function minutesBetween(a: Date, b: Date) {
 }
 
 function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
+  return (
+    a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+    a.getDate() === b.getDate()
+  );
+}
+
+function readTaetigkeit(entry: StempeluhrEntry) {
+  return (entry.Taetigkeit ?? entry["T\u00e4tigkeit"] ?? "").trim();
 }
 
 /**
@@ -27,7 +34,7 @@ export function buildIntervalsForDay(entries: StempeluhrEntry[], now = new Date(
   const sorted = [...entries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
   const intervals: Interval[] = [];
 
-  let open: { start: Date; project: string } | null = null;
+  let open: { start: Date; project: string; taetigkeit: string } | null = null;
 
   for (const e of sorted) {
     const t = new Date(e.Zeit);
@@ -36,15 +43,29 @@ export function buildIntervalsForDay(entries: StempeluhrEntry[], now = new Date(
       // Anmeldung (also used for project switch)
       if (open) {
         if (+t > +open.start) {
-          intervals.push({ start: open.start, end: t, project: open.project });
+          intervals.push({
+            start: open.start,
+            end: t,
+            project: open.project,
+            taetigkeit: open.taetigkeit,
+          });
         }
       }
-      open = { start: t, project: e.Projekt ?? "" };
+      open = {
+        start: t,
+        project: e.Projekt ?? "",
+        taetigkeit: readTaetigkeit(e),
+      };
     } else {
       // Abmeldung
       if (open) {
         if (+t > +open.start) {
-          intervals.push({ start: open.start, end: t, project: open.project });
+          intervals.push({
+            start: open.start,
+            end: t,
+            project: open.project,
+            taetigkeit: open.taetigkeit,
+          });
         }
         open = null;
       }
@@ -53,7 +74,12 @@ export function buildIntervalsForDay(entries: StempeluhrEntry[], now = new Date(
 
   if (open && isSameDay(open.start, now)) {
     if (+now > +open.start) {
-      intervals.push({ start: open.start, end: now, project: open.project });
+      intervals.push({
+        start: open.start,
+        end: now,
+        project: open.project,
+        taetigkeit: open.taetigkeit,
+      });
     }
   }
 
@@ -66,11 +92,12 @@ export function calcWorkAndBreak(intervals: Interval[]) {
   // break taken = gaps between intervals
   const sorted = [...intervals].sort((a, b) => +a.start - +b.start);
   let breakMinutes = 0;
+  // Pausen zwischen Intervallen
   for (let i = 0; i < sorted.length - 1; i++) {
     breakMinutes += minutesBetween(sorted[i].end, sorted[i + 1].start);
   }
 
-  // ArbZG ยง4: >6h -> 30min, >9h -> 45min
+  // ArbZG ง4: >6h -> 30min, >9h -> 45min
   let requiredBreak = 0;
   if (workMinutes > 9 * 60) requiredBreak = 45;
   else if (workMinutes > 6 * 60) requiredBreak = 30;
@@ -81,8 +108,22 @@ export function calcWorkAndBreak(intervals: Interval[]) {
   return { workMinutes, breakMinutes, requiredBreak, missingBreak, netMinutes };
 }
 
+// Sekundengenau Anzeige
 export function fmtHM(mins: number) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+// Sekundengenau Anzeige
+export function fmtHMS(totalSeconds: number) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const ss = String(s).padStart(2, "0");
+
+  return `${hh}:${mm}:${ss}`;
 }

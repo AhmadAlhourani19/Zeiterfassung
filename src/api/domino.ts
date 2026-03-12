@@ -159,10 +159,22 @@ export function getDay(keyDDMMYYYY: string) {
   );
 }
 
-export function createPunch(payload: { Buchungstyp: "0" | "1" | "2"; Projekt: string }) {
+export function createPunch(payload: {
+  Buchungstyp: "0" | "1" | "2";
+  Projekt: string;
+  Taetigkeit?: string;
+}) {
+  const body: Record<string, unknown> = {
+    Buchungstyp: payload.Buchungstyp,
+    Projekt: payload.Projekt,
+  };
+  if (payload.Taetigkeit !== undefined) {
+    body["T\u00e4tigkeit"] = payload.Taetigkeit;
+  }
+
   return http<unknown>(`${BASE}/Dokument?form=Stempeluhr`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -199,18 +211,42 @@ export function updatePunchStatus(
     Zeit: string;
     Projekt?: string;
     Projektname?: string;
+    Taetigkeit?: string;
   }
 ) {
+  const body: Record<string, unknown> = {
+    Buchungstyp: payload.Buchungstyp,
+    Zeit: payload.Zeit,
+  };
+
+  if (payload.Projekt !== undefined) body.Projekt = payload.Projekt;
+  if (payload.Projektname !== undefined) body.Projektname = payload.Projektname;
+  if (payload.Taetigkeit !== undefined) {
+    body["T\u00e4tigkeit"] = payload.Taetigkeit;
+  }
+
   return http<unknown>(`${BASE}/Dokument/${encodeURIComponent(unid)}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "X-HTTP-Method-Override": "PATCH",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
-
+export function updatePunchProject(unid: string, project: string) {
+  return http<unknown>(`${BASE}/Dokument/${encodeURIComponent(unid)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "X-HTTP-Method-Override": "PATCH",
+    },
+    body: JSON.stringify({
+      Projekt: project,
+      Projektname: project,
+    }),
+  });
+}
 export function getUserStatusLookup() {
   return http<UserStatusLookup>(`${BASE}/UserName`);
 }
@@ -218,3 +254,5 @@ export function getUserStatusLookup() {
 export function getCurrentStatus() {
   return http<StatusEntry[]>(`${BASE}/StatusAnzeige`);
 }
+
+

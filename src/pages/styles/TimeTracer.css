@@ -1,4 +1,4 @@
-﻿.time-tracer {
+.time-tracer {
   @apply space-y-6;
 }
 
@@ -89,6 +89,14 @@
 
 .time-tracer__input-label {
   @apply text-xs text-slate-500;
+}
+
+.time-tracer__input-label--spaced {
+  @apply mt-3 block;
+}
+
+.time-tracer__text-input {
+  @apply mt-1 w-full rounded-md border border-slate-200 border-b-slate-400 bg-white px-3 py-2 text-sm outline-none transition hover:border-b-sky-800 focus:border-b-sky-800 focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
 }
 
 .time-tracer__project-trigger {
@@ -251,7 +259,7 @@ rechts: runder Icon-Kreis */
   @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100;
 }
 
-/* Icons für Schalter */
+/* Icons f�r Schalter */
 .time-tracer__action-card-icon {
   @apply h-5 w-5;
 }
@@ -317,3 +325,4 @@ rechts: runder Icon-Kreis */
 .time-tracer__stat-hint {
   @apply mt-1 text-xs text-slate-600;
 }
+

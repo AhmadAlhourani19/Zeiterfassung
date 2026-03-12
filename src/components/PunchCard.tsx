@@ -18,12 +18,11 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
 
   const isClockedIn = latest?.Buchungstyp === "0";
   const status = isClockedIn ? "Eingestempelt" : "Ausgestempelt";
-  const statusHint = isClockedIn
-    ? "Du bist aktuell angemeldet."
-    : "Du bist aktuell abgemeldet.";
+  const statusHint = isClockedIn ? "Du bist aktuell angemeldet." : "Du bist aktuell abgemeldet.";
   const anmeldenLabel = isClockedIn ? "Projekt starten" : "Anmelden";
 
   const [projekt, setProjekt] = useState("");
+  const [taetigkeit, setTaetigkeit] = useState("");
   const [loadingAction, setLoadingAction] = useState<"0" | "1" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,8 +33,10 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
       await createPunch({
         Buchungstyp: action,
         Projekt: action === "0" ? projekt : "",
+        Taetigkeit: action === "0" ? taetigkeit : "",
       });
       setProjekt("");
+      setTaetigkeit("");
       onPunched();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Buchung fehlgeschlagen";
@@ -93,6 +94,14 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
           value={projekt}
           onChange={(e) => setProjekt(e.target.value)}
           placeholder="z.B. HPM-123 / Kundenprojekt"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
+        />
+
+        <label className="mt-2 text-xs text-slate-500">Taetigkeit</label>
+        <input
+          value={taetigkeit}
+          onChange={(e) => setTaetigkeit(e.target.value)}
+          placeholder="z.B. Planung / Abstimmung"
           className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
       </div>

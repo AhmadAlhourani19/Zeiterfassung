@@ -1,4 +1,4 @@
-ï»¿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { StatusEntry } from "../api/types";
 import { getDisplayUserFromKey } from "../api/grouping";
 import "./styles/Status.css";
@@ -91,6 +91,21 @@ function getProject(entry: StatusEntry) {
   return null;
 }
 
+function getTaetigkeit(entry: StatusEntry) {
+  const direct =
+    entry.Taetigkeit?.trim() ||
+    entry["T\u00e4tigkeit"]?.trim() ||
+    null;
+  if (direct) return direct;
+
+  const fromKeys = findValueByKey(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tätig"));
+  if (fromKeys) return fromKeys;
+
+  const fromEntryData = findValueInEntryData(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tätig"));
+  if (fromEntryData) return fromEntryData;
+
+  return null;
+}
 function getStatus(entry: StatusEntry) {
   const bt = (entry.Buchungstyp ?? "").trim();
   if (bt === "0") return { label: "Online", tone: "online" as const };
@@ -126,8 +141,9 @@ export function Status({ entries, loading, error, onReload }: Props) {
       const standort = getStandort(entry);
       const project = getProject(entry);
       const time = formatTime(entry.Zeit);
+      const taetigkeit = getTaetigkeit(entry);
       const rank = status.label.toLowerCase().includes("online") ? 0 : 1;
-      return { entry, status, name, standort, project, time, rank };
+      return { entry, status, name, standort, project, taetigkeit, time, rank };
     });
 
     return mapped.sort((a, b) => {
@@ -229,7 +245,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
               {!loading && filtered.length === 0 ? (
                 <div className="status-page__empty">Keine Statusdaten vorhanden.</div>
               ) : (
-                filtered.map(({ entry, status, name, standort, project, time }) => {
+                filtered.map(({ entry, status, name, standort, project, taetigkeit, time }) => {
                   const badgeClass = [
                     "status-page__badge",
                     status.tone === "online"
@@ -255,7 +271,8 @@ export function Status({ entries, loading, error, onReload }: Props) {
                         )}
                         {name}
                         {project && <div className="status-page__project">{project}</div>}
-                        {time && <span className="status-page__time">â€¢ {time}</span>}
+                        {taetigkeit && <div className="status-page__project">Taetigkeit: {taetigkeit}</div>}
+                        {time && <span className="status-page__time">• {time}</span>}
                       </div>
 
                       <div className="status-page__status-cell">
@@ -272,4 +289,6 @@ export function Status({ entries, loading, error, onReload }: Props) {
     </div>
   );
 }
+
+
 

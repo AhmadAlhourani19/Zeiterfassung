@@ -8,6 +8,7 @@ type Props = {
 export function PunchForm({ onCreated }: Props) {
   const [buchungstyp, setBuchungstyp] = useState<"0" | "1">("0");
   const [projekt, setProjekt] = useState("");
+  const [taetigkeit, setTaetigkeit] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,8 +16,13 @@ export function PunchForm({ onCreated }: Props) {
     setLoading(true);
     setError(null);
     try {
-      await createPunch({ Buchungstyp: buchungstyp, Projekt: projekt });
+      await createPunch({
+        Buchungstyp: buchungstyp,
+        Projekt: projekt,
+        Taetigkeit: taetigkeit,
+      });
       setProjekt("");
+      setTaetigkeit("");
       onCreated?.();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Failed to create punch";
@@ -52,6 +58,14 @@ export function PunchForm({ onCreated }: Props) {
             value={projekt}
             onChange={(e) => setProjekt(e.target.value)}
             placeholder="(optional) project name"
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-slate-600"
+          />
+
+          <label className="mt-3 block text-xs text-slate-400">Taetigkeit</label>
+          <input
+            value={taetigkeit}
+            onChange={(e) => setTaetigkeit(e.target.value)}
+            placeholder="(optional) activity"
             className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-slate-600"
           />
         </div>

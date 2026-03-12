@@ -4,9 +4,11 @@ export type StempeluhrEntry = {
   "@form"?: string;
 
   Key: string;
-  Zeit: string;          // ISO string
+  Zeit: string; // ISO string
   Buchungstyp: "0" | "1" | "2"; // "0" Anmeldung, "1" Abmeldung, "2" Pause
   Projekt: string;
+  Taetigkeit?: string;
+  "T\u00e4tigkeit"?: string;
 };
 
 export type ProjectEntry = {
@@ -31,6 +33,8 @@ export type StatusEntry = {
   ProjektName?: string;
   Projektbezeichnung?: string;
   Project?: string;
+  Taetigkeit?: string;
+  "T\u00e4tigkeit"?: string;
   Standort?: string;
   Status?: string;
   commonName?: string;
