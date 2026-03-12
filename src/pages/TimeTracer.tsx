@@ -200,9 +200,9 @@ export function TimeTracer({
       if (trimmed) onProjectUsed(trimmed);
       /* 
           Projekt in der Liste muss nicht wieder ausgewählt werden, wenn bereits ein Projekt aktiv ist und eine neue Anmeldung oder Pause erfolgt.
-      */
-      // Projekt nicht reseten
-      // setProjekt("");      
+          Projekt nicht reseten
+          setProjekt("");
+      */      
       onRefresh();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Buchung fehlgeschlagen";
@@ -248,7 +248,7 @@ export function TimeTracer({
 
             {isCheckedIn && latestTaetigkeit && (
               <div className="time-tracer__project-row">
-                <span>Taetigkeit: </span>
+                <span>Tätigkeit: </span>
                 <span className="time-tracer__project-pill" title={latestTaetigkeit}>
                   {latestTaetigkeit}
                 </span>

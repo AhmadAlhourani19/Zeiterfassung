@@ -7,6 +7,7 @@ import {
   getUserStatusLookup,
   updatePunchProject,
   updatePunchStatus,
+  updatePunchTaetigkeit,
 } from "../api/domino";
 import type { ProjectEntry, StempeluhrEntry } from "../api/types";
 import { formatDDMMYYYY, formatMMYYYY } from "../api/grouping";
@@ -88,6 +89,14 @@ function normalizeProjectName(value: string) {
   return value.trim().toLowerCase();
 }
 
+function normalizeText(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function readTaetigkeit(entry: StempeluhrEntry) {
+  return (entry.Taetigkeit ?? entry["T\u00e4tigkeit"] ?? "").trim();
+}
+
 function intervalKey(start: Date, index: number) {
   return `${+start}-${index}`;
 }
@@ -96,6 +105,13 @@ type EditProjectContext = {
   key: string;
   intervalStartMs: number;
   oldName: string;
+};
+
+type EditTaetigkeitContext = {
+  key: string;
+  intervalStartMs: number;
+  projectName: string;
+  oldValue: string;
 };
 
 export function Reports() {
@@ -118,6 +134,11 @@ export function Reports() {
   const [editProjectValue, setEditProjectValue] = useState("");
   const [editProjectMenuOpen, setEditProjectMenuOpen] = useState(false);
   const [editProjectQuery, setEditProjectQuery] = useState("");
+
+  const [editTaetigkeitContext, setEditTaetigkeitContext] = useState<EditTaetigkeitContext | null>(null);
+  const [editTaetigkeitValue, setEditTaetigkeitValue] = useState("");
+  const [editTaetigkeitMenuOpen, setEditTaetigkeitMenuOpen] = useState(false);
+  const [editTaetigkeitQuery, setEditTaetigkeitQuery] = useState("");
 
   const dayIntervals = useMemo(() => buildIntervalsForDay(dayEntries, new Date()), [dayEntries]);
   const dayStats = useMemo(() => calcWorkAndBreak(dayIntervals), [dayIntervals]);
@@ -218,6 +239,37 @@ export function Reports() {
     return editSelectOptions.filter((name) => name.toLowerCase().includes(query));
   }, [editProjectQuery, editSelectOptions]);
 
+  const editTaetigkeitOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+
+    const push = (value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const key = normalizeText(trimmed);
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push(trimmed);
+    };
+
+    push("Ohne Taetigkeit");
+    for (const interval of dayIntervals) {
+      push(interval.taetigkeit);
+    }
+    for (const entry of monthEntries) {
+      push(readTaetigkeit(entry));
+    }
+    if (editTaetigkeitValue.trim()) push(editTaetigkeitValue);
+
+    return list;
+  }, [dayIntervals, monthEntries, editTaetigkeitValue]);
+
+  const filteredTaetigkeitOptions = useMemo(() => {
+    const query = editTaetigkeitQuery.trim().toLowerCase();
+    if (!query) return editTaetigkeitOptions;
+    return editTaetigkeitOptions.filter((option) => option.toLowerCase().includes(query));
+  }, [editTaetigkeitOptions, editTaetigkeitQuery]);
+
   const monthTotalMinutes = useMemo(
     () => monthProjectTotals.reduce((sum, project) => sum + project.minutes, 0),
     [monthProjectTotals]
@@ -299,13 +351,16 @@ export function Reports() {
   }, []);
 
   useEffect(() => {
-    if (!editProjectMenuOpen) return;
+    if (!editProjectMenuOpen && !editTaetigkeitMenuOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        cancelEditProject();
+      if (event.key !== "Escape") return;
+      if (editTaetigkeitMenuOpen) {
+        cancelEditTaetigkeit();
+        return;
       }
+      cancelEditProject();
     };
 
     document.body.style.overflow = "hidden";
@@ -315,7 +370,7 @@ export function Reports() {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [editProjectMenuOpen]);
+  }, [editProjectMenuOpen, editTaetigkeitMenuOpen]);
 
   function handleExportDay() {
     if (!dayEntries.length) return;
@@ -367,6 +422,10 @@ export function Reports() {
     setEditContext({ key, intervalStartMs: +intervalStart, oldName: projectName });
     setEditProjectValue(projectName);
     setEditProjectQuery("");
+    setEditTaetigkeitContext(null);
+    setEditTaetigkeitValue("");
+    setEditTaetigkeitQuery("");
+    setEditTaetigkeitMenuOpen(false);
     setEditProjectMenuOpen(true);
     setActionError(null);
     setActionInfo(null);
@@ -425,6 +484,97 @@ export function Reports() {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Projekt konnte nicht aktualisiert werden";
       setActionError(message || "Projekt konnte nicht aktualisiert werden");
+    } finally {
+      setActionBusyKey(null);
+    }
+  }
+
+  function openEditTaetigkeitMenu(
+    intervalStart: Date,
+    index: number,
+    projectName: string,
+    taetigkeit: string
+  ) {
+    const key = intervalKey(intervalStart, index);
+    setEditIntervalKey(key);
+    setEditTaetigkeitContext({
+      key,
+      intervalStartMs: +intervalStart,
+      projectName,
+      oldValue: taetigkeit.trim(),
+    });
+    setEditTaetigkeitValue(taetigkeit.trim());
+    setEditTaetigkeitQuery("");
+
+    setEditContext(null);
+    setEditProjectValue("");
+    setEditProjectQuery("");
+    setEditProjectMenuOpen(false);
+
+    setEditTaetigkeitMenuOpen(true);
+    setActionError(null);
+    setActionInfo(null);
+  }
+
+  function cancelEditTaetigkeit() {
+    setEditTaetigkeitMenuOpen(false);
+    setEditTaetigkeitQuery("");
+    setEditIntervalKey(null);
+    setEditTaetigkeitContext(null);
+    setEditTaetigkeitValue("");
+  }
+
+  async function saveEditedTaetigkeit() {
+    if (!editTaetigkeitContext) return;
+
+    const oldValue = editTaetigkeitContext.oldValue;
+    const selectedRaw = editTaetigkeitValue.trim();
+    const selected = selectedRaw === "Ohne Taetigkeit" ? "" : selectedRaw;
+
+    if (normalizeText(oldValue) === normalizeText(selected)) {
+      cancelEditTaetigkeit();
+      return;
+    }
+
+    const sourceEntries = dayStartEntriesByStartMs.get(editTaetigkeitContext.intervalStartMs) ?? [];
+    if (!sourceEntries.length) {
+      setActionError("Keine passende Buchung fuer diese Taetigkeit gefunden.");
+      return;
+    }
+
+    const sourceEntry =
+      sourceEntries.find(
+        (entry) =>
+          normalizeProjectName(entry.Projekt?.trim() ? entry.Projekt : "(ohne Projekt)") ===
+            normalizeProjectName(editTaetigkeitContext.projectName) &&
+          normalizeText(readTaetigkeit(entry)) === normalizeText(oldValue)
+      ) ??
+      sourceEntries.find(
+        (entry) =>
+          normalizeProjectName(entry.Projekt?.trim() ? entry.Projekt : "(ohne Projekt)") ===
+          normalizeProjectName(editTaetigkeitContext.projectName)
+      ) ??
+      sourceEntries[0];
+
+    setActionBusyKey(`taetigkeit:${editTaetigkeitContext.intervalStartMs}`);
+    setActionError(null);
+    setActionInfo(null);
+
+    try {
+      await updatePunchTaetigkeit(sourceEntry["@unid"], selected);
+
+      cancelEditTaetigkeit();
+      await loadDay(dayKey);
+      await loadMonth(monthKey);
+
+      if (selected) {
+        setActionInfo(`Taetigkeit aktualisiert: ${selected}.`);
+      } else {
+        setActionInfo("Taetigkeit entfernt.");
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Taetigkeit konnte nicht aktualisiert werden";
+      setActionError(message || "Taetigkeit konnte nicht aktualisiert werden");
     } finally {
       setActionBusyKey(null);
     }
@@ -534,7 +684,8 @@ export function Reports() {
                 dayIntervals.map((it, idx) => {
                   const currentProject = it.project?.trim() ? it.project : "(ohne Projekt)";
                   const editKey = intervalKey(it.start, idx);
-                  const isEditing = editIntervalKey === editKey;
+                  const isEditingProject = editIntervalKey === editKey && editProjectMenuOpen;
+                  const isEditingTaetigkeit = editIntervalKey === editKey && editTaetigkeitMenuOpen;
                   const disabled = loading || actionBusyKey !== null;
 
                   return (
@@ -573,11 +724,19 @@ export function Reports() {
                         )}
                         <button
                           type="button"
+                          onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
+                          disabled={disabled}
+                          className="reports-page__row-btn"
+                        >
+                          {isEditingTaetigkeit ? "Taetigkeit..." : "Taetigkeit"}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
                           disabled={disabled}
                           className="reports-page__row-btn"
                         >
-                          {isEditing && editProjectMenuOpen ? "Bearbeiten..." : "Bearbeiten"}
+                          {isEditingProject ? "Bearbeiten..." : "Bearbeiten"}
                         </button>
                       </div>
                     </div>
@@ -651,12 +810,31 @@ export function Reports() {
               {monthProjectTotals.length === 0 ? (
                 <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
               ) : (
-                monthProjectTotals.map((project) => (
-                  <div key={`${monthKey}-${project.name}`} className="reports-page__row">
-                    <div className="reports-page__project-name">{project.name}</div>
-                    <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
-                  </div>
-                ))
+                monthProjectTotals.map((project) => {
+                  const canActivate = project.name !== "(ohne Projekt)";
+                  const disabled = loading || actionBusyKey !== null;
+
+                  return (
+                    <div key={`${monthKey}-${project.name}`} className="reports-page__row reports-page__row--project">
+                      <div className="reports-page__project-main">
+                        <div className="reports-page__project-name">{project.name}</div>
+                      </div>
+                      <div className="reports-page__project-actions">
+                        <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
+                        {canActivate && (
+                          <button
+                            type="button"
+                            onClick={() => void activateProject(project.name)}
+                            disabled={disabled}
+                            className="reports-page__row-btn reports-page__row-btn--primary"
+                          >
+                            Projekt waehlen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -746,9 +924,117 @@ export function Reports() {
           </div>
         )}
 
+        {editTaetigkeitMenuOpen && (
+          <div className="reports-page__project-overlay" onClick={cancelEditTaetigkeit}>
+            <div
+              className="reports-page__project-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Taetigkeit bearbeiten"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="reports-page__project-menu-header">
+                <div>
+                  <div className="reports-page__project-menu-title">Taetigkeit bearbeiten</div>
+                  <div className="reports-page__project-menu-subtitle">
+                    Projekt: {editTaetigkeitContext?.projectName ?? "(ohne Projekt)"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelEditTaetigkeit}
+                  className="reports-page__project-menu-close"
+                  aria-label="Schliessen"
+                >
+                  <IconClose className="h-5 w-5 text-slate-600" />
+                </button>
+              </div>
+
+              <label className="reports-page__field-label" htmlFor="reports-edit-taetigkeit-value">
+                Taetigkeit (frei eingeben oder unten auswaehlen)
+              </label>
+              <input
+                id="reports-edit-taetigkeit-value"
+                value={editTaetigkeitValue}
+                onChange={(event) => setEditTaetigkeitValue(event.target.value)}
+                placeholder="Taetigkeit eingeben (optional)..."
+                className="reports-page__project-search"
+                disabled={loading || actionBusyKey !== null}
+              />
+
+              <input
+                value={editTaetigkeitQuery}
+                onChange={(event) => setEditTaetigkeitQuery(event.target.value)}
+                placeholder="Option suchen..."
+                className="reports-page__project-search"
+                disabled={loading || actionBusyKey !== null}
+              />
+
+              <div className="reports-page__project-list">
+                {filteredTaetigkeitOptions.length === 0 && (
+                  <div className="reports-page__project-empty">Keine Treffer.</div>
+                )}
+
+                {filteredTaetigkeitOptions.map((option) => {
+                  const normalizedOption = option === "Ohne Taetigkeit" ? "" : option;
+                  const isActive = normalizeText(normalizedOption) === normalizeText(editTaetigkeitValue);
+
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setEditTaetigkeitValue(normalizedOption)}
+                      className={[
+                        "reports-page__project-item",
+                        isActive ? "reports-page__project-item--active" : "",
+                      ]
+                        .join(" ")
+                        .trim()}
+                    >
+                      <span className="reports-page__project-item-name" title={option}>
+                        {option}
+                      </span>
+                      {isActive && <span className="reports-page__project-item-tag">Aktiv</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="reports-page__project-menu-actions">
+                <button
+                  type="button"
+                  onClick={cancelEditTaetigkeit}
+                  className="reports-page__row-btn"
+                  disabled={loading || actionBusyKey !== null}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveEditedTaetigkeit()}
+                  className="reports-page__row-btn reports-page__row-btn--primary"
+                  disabled={loading || actionBusyKey !== null}
+                >
+                  Speichern
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {err && <div className="reports-page__error">{err}</div>}
         {loading && <div className="reports-page__loading">Lade...</div>}
       </div>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+

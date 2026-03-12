@@ -247,6 +247,20 @@ export function updatePunchProject(unid: string, project: string) {
     }),
   });
 }
+
+export function updatePunchTaetigkeit(unid: string, taetigkeit: string) {
+  return http<unknown>(`${BASE}/Dokument/${encodeURIComponent(unid)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "X-HTTP-Method-Override": "PATCH",
+    },
+    body: JSON.stringify({
+      "T\u00e4tigkeit": taetigkeit,
+    }),
+  });
+}
+
 export function getUserStatusLookup() {
   return http<UserStatusLookup>(`${BASE}/UserName`);
 }
@@ -254,5 +268,6 @@ export function getUserStatusLookup() {
 export function getCurrentStatus() {
   return http<StatusEntry[]>(`${BASE}/StatusAnzeige`);
 }
+
 
 

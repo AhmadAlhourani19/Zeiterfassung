@@ -249,6 +249,10 @@
   @apply rounded-xl border border-slate-300 bg-white p-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900;
 }
 
+.reports-page__field-label {
+  @apply mt-3 block text-xs font-semibold text-slate-600;
+}
+
 .reports-page__project-search {
   @apply mt-3 w-full rounded-md border border-slate-200 border-b-slate-400 px-3 py-2 text-sm outline-none transition hover:border-b-sky-800 focus:border-b-sky-800 focus:ring-0;
 }
@@ -353,3 +357,4 @@
     @apply mt-2 pt-2;
   }
 }
+
