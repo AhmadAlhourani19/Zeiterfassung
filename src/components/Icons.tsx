@@ -35,23 +35,62 @@ export const IconTime = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// export const IconProjects = (props: React.SVGProps<SVGSVGElement>) => (
+//   <svg
+//     viewBox="0 0 24 24"
+//     fill="none"
+//     stroke="currentColor"
+//     strokeWidth="1.5"
+//     data-slot="icon"
+//     aria-hidden="true"
+//     {...props}
+//   >
+//     <path
+//       d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
+//       strokeLinecap="round"
+//       strokeLinejoin="round"
+//     />
+//   </svg>
+// );
+
 export const IconProjects = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
     strokeWidth="1.5"
-    data-slot="icon"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     aria-hidden="true"
     {...props}
   >
-    <path
-      d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    {/* Ordner */}
+    <path d="M3.5 8.5V7a2 2 0 0 1 2-2h4l2 2h6.5a2 2 0 0 1 2 2v1.5" />
+    <path d="M3.5 8.5h17l-1.5 8.5a2 2 0 0 1-2 1.5H6a2 2 0 0 1-2-1.5L3.5 8.5Z" />
   </svg>
 );
+
+// export const IconReports = (props: React.SVGProps<SVGSVGElement>) => (
+//   <svg
+//     viewBox="0 0 24 24"
+//     fill="none"
+//     stroke="currentColor"
+//     strokeWidth="1.5"
+//     strokeLinecap="round"
+//     strokeLinejoin="round"
+//     aria-hidden="true"
+//     {...props}
+//   >
+//     {/* Dokument */}
+//     <path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9A2.5 2.5 0 0 0 19 18.5V8l-5-5Z" />
+
+//     {/* Umgeknickte Ecke */}
+//     <path d="M14 3v5h5" />
+
+//     {/* Textlinien */}
+//     <path d="M9 13h6M9 17h4" />
+//   </svg>
+// );
 
 export const IconReports = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -70,29 +109,10 @@ export const IconReports = (props: React.SVGProps<SVGSVGElement>) => (
     {/* Umgeknickte Ecke */}
     <path d="M14 3v5h5" />
 
-    {/* Textlinien */}
-    <path d="M9 13h6M9 17h4" />
-  </svg>
-);
-
-export const IconStatus = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-    {/* Kreis */}
-    <circle
-      cx="12"
-      cy="12"
-      r="9"
-      stroke="currentColor"
-      strokeWidth="2"
-    />
-    {/* Häkchen */}
-    <path
-      d="M8 12l3 3 5-6"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    {/* Balken / Report */}
+    <path d="M9 17v-3" />
+    <path d="M12 17v-6" />
+    <path d="M15 17v-4" />
   </svg>
 );
 
@@ -197,5 +217,45 @@ export const IconAbmelden = (props: React.SVGProps<SVGSVGElement>) => (
     <path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3" />
     <path d="M14 7l5 5-5 5" />
     <path d="M20 12H9" />
+  </svg>
+);
+
+export const IconStart = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    {...props}
+  >
+    <path d="M6.5 5v14l11-7-11-7Z" />
+  </svg>
+);
+
+export const IconStatus = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    {...props}
+  >
+    {/* mittlere Person */}
+    <circle cx="12" cy="8" r="3" />
+    <path d="M6.5 18c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+
+    {/* linke Person */}
+    <circle cx="5" cy="9" r="2.5" />
+    <path d="M1.5 18c0-2.2 1.8-3.8 3.5-4.2" />
+
+    {/* rechte Person */}
+    <circle cx="19" cy="9" r="2.5" />
+    <path d="M22.5 18c0-2.2-1.8-3.8-3.5-4.2" />
   </svg>
 );

@@ -50,7 +50,7 @@ export function AppShell({
           ].join(" ")}
         >
           <div className="mb-6">
-            <div className="text-xs text-slate-500">Angemeldet als</div>
+            <div className="text-xs text-slate-500">Benutzer</div>
             <div className="text-lg font-semibold">{displayUser}</div>
             {authError && (
               <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">

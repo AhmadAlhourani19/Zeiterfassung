@@ -98,10 +98,10 @@ function getTaetigkeit(entry: StatusEntry) {
     null;
   if (direct) return direct;
 
-  const fromKeys = findValueByKey(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tätig"));
+  const fromKeys = findValueByKey(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tï¿½tig"));
   if (fromKeys) return fromKeys;
 
-  const fromEntryData = findValueInEntryData(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tätig"));
+  const fromEntryData = findValueInEntryData(entry, (key) => key.toLowerCase().includes("taetig") || key.toLowerCase().includes("tï¿½tig"));
   if (fromEntryData) return fromEntryData;
 
   return null;
@@ -166,7 +166,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
   return (
     <div className="status-page">
       <div className="status-page__header">
-        <h2 className="status-page__title">Aktueller Mitarbeiter Status</h2>
+        <h2 className="status-page__title">Anwesenheitsstatus</h2>
         <button
           type="button"
           onClick={() => void onReload()}
@@ -272,7 +272,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
                         {name}
                         {project && <div className="status-page__project">{project}</div>}
                         {taetigkeit && <div className="status-page__project">Taetigkeit: {taetigkeit}</div>}
-                        {time && <span className="status-page__time">• {time}</span>}
+                        {time && <span className="status-page__time">ï¿½ {time}</span>}
                       </div>
 
                       <div className="status-page__status-cell">

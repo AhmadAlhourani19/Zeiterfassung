@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   createPunch,
   getDay,
@@ -10,10 +10,11 @@ import {
   updatePunchTaetigkeit,
 } from "../api/domino";
 import type { ProjectEntry, StempeluhrEntry } from "../api/types";
-import { formatDDMMYYYY, formatMMYYYY } from "../api/grouping";
+import { formatDDMMYYYY, formatMMYYYY, getDisplayUserFromKey } from "../api/grouping";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
 import { IoCaretForward, IoCaretBack } from "react-icons/io5";
-import { IconClose } from "../components/Icons";
+import { IconClose, IconStart } from "../components/Icons";
+import * as XLSX from "xlsx";
 import "./styles/Reports.css";
 
 function toInputDate(ddmmyyyy: string) {
@@ -33,6 +34,13 @@ function toInputMonth(mmyyyy: string) {
 
 function fromInputMonth(yyyyMm: string) {
   const [yyyy, mm] = yyyyMm.split("-");
+  return `${mm}.${yyyy}`;
+}
+
+function toExportMonthLabel(mmyyyy: string) {
+  const [mm, yyyy] = mmyyyy.split(".");
+  if (!mm || !yyyy) return mmyyyy;
+  // Keep month label exactly as MM.YYYY in Excel export.
   return `${mm}.${yyyy}`;
 }
 
@@ -64,25 +72,17 @@ function formatTimeRounded(date: Date) {
   return rounded.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-function csvEscape(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
+function downloadExcel(filename: string, rows: string[][], widthPx = 220) {
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
 
-function buildCsv(rows: string[][]) {
-  return rows.map((row) => row.map(csvEscape).join(";")).join("\r\n");
-}
+  if (columnCount > 0) {
+    sheet["!cols"] = Array.from({ length: columnCount }, () => ({ wpx: widthPx }));
+  }
 
-function downloadCsv(filename: string, rows: string[][]) {
-  const csv = "\ufeff" + buildCsv(rows);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Bericht");
+  XLSX.writeFile(workbook, filename, { compression: true });
 }
 
 function normalizeProjectName(value: string) {
@@ -91,6 +91,13 @@ function normalizeProjectName(value: string) {
 
 function normalizeText(value: string) {
   return value.trim().toLowerCase();
+}
+
+function normalizeDisplayName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("CN=")) return getDisplayUserFromKey(trimmed);
+  return trimmed;
 }
 
 function readTaetigkeit(entry: StempeluhrEntry) {
@@ -157,7 +164,7 @@ export function Reports() {
       .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
   }, [dayIntervals]);
 
-  const monthProjectTotals = useMemo(() => {
+  const monthProjectSections = useMemo(() => {
     const groupedByDay: Record<string, StempeluhrEntry[]> = {};
     for (const entry of monthEntries) {
       const day = formatDDMMYYYY(new Date(entry.Zeit));
@@ -165,21 +172,42 @@ export function Reports() {
       groupedByDay[day].push(entry);
     }
 
-    const totals: Record<string, number> = {};
-    for (const entries of Object.values(groupedByDay)) {
+    const dayKeys = Object.keys(groupedByDay).sort((a, b) => +parseDayKey(a) - +parseDayKey(b));
+    const sections: Record<
+      string,
+      { minutes: number; rows: Array<{ date: string; minutes: number; taetigkeit: string }> }
+    > = {};
+
+    for (const day of dayKeys) {
+      const entries = groupedByDay[day];
       const intervals = buildIntervalsForDay(entries, new Date());
       for (const it of intervals) {
         const minutes = Math.round((+it.end - +it.start) / 60000);
         if (minutes <= 0) continue;
         const name = it.project?.trim() ? it.project : "(ohne Projekt)";
-        totals[name] = (totals[name] ?? 0) + minutes;
+        if (!sections[name]) sections[name] = { minutes: 0, rows: [] };
+        sections[name].minutes += minutes;
+        sections[name].rows.push({
+          date: day,
+          minutes,
+          taetigkeit: it.taetigkeit?.trim() ? it.taetigkeit : "",
+        });
       }
     }
 
-    return Object.entries(totals)
-      .map(([name, minutes]) => ({ name, minutes }))
+    return Object.entries(sections)
+      .map(([name, section]) => ({
+        name,
+        minutes: section.minutes,
+        rows: section.rows,
+      }))
       .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
   }, [monthEntries]);
+
+  const monthProjectTotals = useMemo(
+    () => monthProjectSections.map(({ name, minutes }) => ({ name, minutes })),
+    [monthProjectSections]
+  );
 
   const dayStartEntriesByStartMs = useMemo(() => {
     const map = new Map<number, StempeluhrEntry[]>();
@@ -252,7 +280,7 @@ export function Reports() {
       list.push(trimmed);
     };
 
-    push("Ohne Taetigkeit");
+    push("Ohne Tätigkeit");
     for (const interval of dayIntervals) {
       push(interval.taetigkeit);
     }
@@ -274,6 +302,18 @@ export function Reports() {
     () => monthProjectTotals.reduce((sum, project) => sum + project.minutes, 0),
     [monthProjectTotals]
   );
+
+  const exportUserName = useMemo(() => {
+    for (const entry of dayEntries) {
+      const normalized = normalizeDisplayName(entry.Key);
+      if (normalized) return normalized;
+    }
+    for (const entry of monthEntries) {
+      const normalized = normalizeDisplayName(entry.Key);
+      if (normalized) return normalized;
+    }
+    return "";
+  }, [dayEntries, monthEntries]);
 
   async function loadDay(targetDayKey = dayKey) {
     setLoading(true);
@@ -374,19 +414,32 @@ export function Reports() {
 
   function handleExportDay() {
     if (!dayEntries.length) return;
+    const bruttoMinutes = dayStats.workMinutes + dayStats.breakMinutes;
+    const nettoMinutes = dayStats.workMinutes;
     const rows: string[][] = [
+      ["Arbeitszeit mit pausen"],
       ["Datum", "Brutto", "Netto", "Pause genommen", "Pause erforderlich", "Pause fehlend"],
       [
         dayKey,
-        fmtHM(dayStats.workMinutes),
-        fmtHM(dayStats.netMinutes),
+        fmtHM(bruttoMinutes),
+        fmtHM(nettoMinutes),
         fmtHM(dayStats.breakMinutes),
         fmtHM(dayStats.requiredBreak),
         fmtHM(dayStats.missingBreak),
       ],
       [],
-      ["Start", "Ende", "Dauer", "Projekt", "Taetigkeit"],
+      ["Projektzeiten"],
     ];
+
+    if (!dayProjectTotals.length) {
+      rows.push(["(keine Projekte)", fmtHM(0)]);
+    } else {
+      for (const project of dayProjectTotals) {
+        rows.push([project.name, fmtHM(project.minutes)]);
+      }
+    }
+
+    rows.push([], ["Arbeitsphasen"], ["Start", "Ende", "Dauer", "Projekt"]);
 
     for (const it of dayIntervals) {
       rows.push([
@@ -394,26 +447,35 @@ export function Reports() {
         formatTimeRounded(it.end),
         fmtHM(Math.round((+it.end - +it.start) / 60000)),
         it.project?.trim() ? it.project : "(ohne Projekt)",
-        it.taetigkeit?.trim() ? it.taetigkeit : "",
       ]);
     }
-    downloadCsv(`bericht-tag-${dayKey}.csv`, rows);
+    downloadExcel(`bericht-tag-${dayKey}.xlsx`, rows);
   }
 
   function handleExportMonth() {
     if (!monthEntries.length) return;
+    const exportMonth = toExportMonthLabel(monthKey);
     const rows: string[][] = [["Monat", "Projekt", "Arbeitszeit"]];
 
     if (!monthProjectTotals.length) {
-      rows.push([monthKey, "(keine Projekte)", fmtHM(0)]);
+      rows.push([exportMonth, "(keine Projekte)", fmtHM(0)]);
     } else {
       for (const project of monthProjectTotals) {
-        rows.push([monthKey, project.name, fmtHM(project.minutes)]);
+        rows.push([exportMonth, project.name, fmtHM(project.minutes)]);
       }
     }
 
     rows.push(["", "Gesamt", fmtHM(monthTotalMinutes)]);
-    downloadCsv(`bericht-monat-${monthKey}.csv`, rows);
+
+    for (const section of monthProjectSections) {
+      rows.push([], [section.name], ["Datum", "Dauer", "Name", "Taetigkeit"]);
+      for (const row of section.rows) {
+        rows.push([row.date, fmtHM(row.minutes), exportUserName, row.taetigkeit]);
+      }
+      rows.push(["Gesamt", fmtHM(section.minutes)]);
+    }
+
+    downloadExcel(`bericht-monat-${monthKey}.xlsx`, rows);
   }
 
   function openEditProjectMenu(intervalStart: Date, index: number, projectName: string) {
@@ -529,7 +591,7 @@ export function Reports() {
 
     const oldValue = editTaetigkeitContext.oldValue;
     const selectedRaw = editTaetigkeitValue.trim();
-    const selected = selectedRaw === "Ohne Taetigkeit" ? "" : selectedRaw;
+    const selected = selectedRaw === "Ohne Tätigkeit" ? "" : selectedRaw;
 
     if (normalizeText(oldValue) === normalizeText(selected)) {
       cancelEditTaetigkeit();
@@ -546,7 +608,7 @@ export function Reports() {
       sourceEntries.find(
         (entry) =>
           normalizeProjectName(entry.Projekt?.trim() ? entry.Projekt : "(ohne Projekt)") ===
-            normalizeProjectName(editTaetigkeitContext.projectName) &&
+          normalizeProjectName(editTaetigkeitContext.projectName) &&
           normalizeText(readTaetigkeit(entry)) === normalizeText(oldValue)
       ) ??
       sourceEntries.find(
@@ -568,13 +630,13 @@ export function Reports() {
       await loadMonth(monthKey);
 
       if (selected) {
-        setActionInfo(`Taetigkeit aktualisiert: ${selected}.`);
+        setActionInfo(`Tätigkeit aktualisiert: ${selected}.`);
       } else {
-        setActionInfo("Taetigkeit entfernt.");
+        setActionInfo("Tätigkeit entfernt.");
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Taetigkeit konnte nicht aktualisiert werden";
-      setActionError(message || "Taetigkeit konnte nicht aktualisiert werden");
+      const message = e instanceof Error ? e.message : "Tätigkeit konnte nicht aktualisiert werden";
+      setActionError(message || "Tätigkeit konnte nicht aktualisiert werden");
     } finally {
       setActionBusyKey(null);
     }
@@ -662,8 +724,8 @@ export function Reports() {
             </div>
 
             <div className="reports-page__metric">
-              Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span> / Netto:{" "}
-              <span className="reports-page__metric-value">{fmtHM(dayStats.netMinutes)}</span>
+              Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes + dayStats.breakMinutes)}</span> / Netto:{" "}
+              <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span>
             </div>
             <div className="reports-page__metric-detail">
               Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
@@ -702,7 +764,7 @@ export function Reports() {
                             <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
                           )}
                           {it.taetigkeit?.trim() && (
-                            <div className="reports-page__row-meta">Taetigkeit: {it.taetigkeit}</div>
+                            <div className="reports-page__row-meta">Tätigkeit: {it.taetigkeit}</div>
                           )}
                         </div>
                       </div>
@@ -712,32 +774,39 @@ export function Reports() {
                           {fmtHM(Math.round((+it.end - +it.start) / 60000))}
                         </div>
 
-                        {currentProject !== "(ohne Projekt)" && (
+                        <div className="reports-page__split-btn-group">
+                          <button
+                            type="button"
+                            onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
+                            disabled={disabled}
+                            className="reports-page__split-btn reports-page__split-btn--left"
+                            title="Projekt Ändern"
+                          >
+                            {isEditingProject ? "Projekt..." : "Projekt"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
+                            disabled={disabled}
+                            className="reports-page__split-btn reports-page__split-btn--middle"
+                            title="Tätigkeit Ändern"
+                          >
+                            {isEditingTaetigkeit ? "Tätigkeit..." : "Tätigkeit"}
+                          </button>                         
+
                           <button
                             type="button"
                             onClick={() => void activateProject(currentProject, it.taetigkeit)}
                             disabled={disabled}
-                            className="reports-page__row-btn reports-page__row-btn--primary"
+                            className="reports-page__split-btn reports-page__split-btn--icon"
+                            title="Projekt starten"
                           >
-                            Projekt waehlen
+                            <span className="reports-page__lookup-btn-start-icon">
+                              <IconStart />
+                            </span>
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
-                          disabled={disabled}
-                          className="reports-page__row-btn"
-                        >
-                          {isEditingTaetigkeit ? "Taetigkeit..." : "Taetigkeit"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
-                          disabled={disabled}
-                          className="reports-page__row-btn"
-                        >
-                          {isEditingProject ? "Bearbeiten..." : "Bearbeiten"}
-                        </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -810,27 +879,14 @@ export function Reports() {
               {monthProjectTotals.length === 0 ? (
                 <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
               ) : (
-                monthProjectTotals.map((project) => {
-                  const canActivate = project.name !== "(ohne Projekt)";
-                  const disabled = loading || actionBusyKey !== null;
-
+                monthProjectTotals.map((project) => {                  
                   return (
                     <div key={`${monthKey}-${project.name}`} className="reports-page__row reports-page__row--project">
                       <div className="reports-page__project-main">
                         <div className="reports-page__project-name">{project.name}</div>
                       </div>
                       <div className="reports-page__project-actions">
-                        <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
-                        {canActivate && (
-                          <button
-                            type="button"
-                            onClick={() => void activateProject(project.name)}
-                            disabled={disabled}
-                            className="reports-page__row-btn reports-page__row-btn--primary"
-                          >
-                            Projekt waehlen
-                          </button>
-                        )}
+                        <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>                        
                       </div>
                     </div>
                   );
@@ -930,12 +986,12 @@ export function Reports() {
               className="reports-page__project-menu"
               role="dialog"
               aria-modal="true"
-              aria-label="Taetigkeit bearbeiten"
+              aria-label="Tätigkeit bearbeiten"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="reports-page__project-menu-header">
                 <div>
-                  <div className="reports-page__project-menu-title">Taetigkeit bearbeiten</div>
+                  <div className="reports-page__project-menu-title">Tätigkeit bearbeiten</div>
                   <div className="reports-page__project-menu-subtitle">
                     Projekt: {editTaetigkeitContext?.projectName ?? "(ohne Projekt)"}
                   </div>
@@ -951,24 +1007,25 @@ export function Reports() {
               </div>
 
               <label className="reports-page__field-label" htmlFor="reports-edit-taetigkeit-value">
-                Taetigkeit (frei eingeben oder unten auswaehlen)
+                Tätigkeit (frei eingeben oder unten auswählen)
               </label>
               <input
                 id="reports-edit-taetigkeit-value"
                 value={editTaetigkeitValue}
                 onChange={(event) => setEditTaetigkeitValue(event.target.value)}
-                placeholder="Taetigkeit eingeben (optional)..."
+                placeholder="Neue Tätigkeit"
                 className="reports-page__project-search"
                 disabled={loading || actionBusyKey !== null}
               />
 
-              <input
+              {/* Suchen brauchen wir nicht */}
+              {/* <input
                 value={editTaetigkeitQuery}
                 onChange={(event) => setEditTaetigkeitQuery(event.target.value)}
-                placeholder="Option suchen..."
+                placeholder="Suchen..."
                 className="reports-page__project-search"
                 disabled={loading || actionBusyKey !== null}
-              />
+              /> */}
 
               <div className="reports-page__project-list">
                 {filteredTaetigkeitOptions.length === 0 && (
@@ -976,7 +1033,7 @@ export function Reports() {
                 )}
 
                 {filteredTaetigkeitOptions.map((option) => {
-                  const normalizedOption = option === "Ohne Taetigkeit" ? "" : option;
+                  const normalizedOption = option === "Ohne Tätigkeit" ? "" : option;
                   const isActive = normalizeText(normalizedOption) === normalizeText(editTaetigkeitValue);
 
                   return (
@@ -1028,6 +1085,17 @@ export function Reports() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

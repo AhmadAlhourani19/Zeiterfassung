@@ -303,6 +303,7 @@ export default function App() {
   useEffect(() => {
     loadToday();      
     loadUserIdentity();    
+    loadProjects();
   }, []);
 
   return (

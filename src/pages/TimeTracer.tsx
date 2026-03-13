@@ -298,12 +298,12 @@ export function TimeTracer({
             )}
 
             <label className="time-tracer__input-label time-tracer__input-label--spaced">
-              Tätigkeit (optional)
+              Tätigkeit / Kommentar (optional)
             </label>
             <input
               value={taetigkeit}
               onChange={(e) => setTaetigkeit(e.target.value)}
-              placeholder="z.B. Planung / Abstimmung / Dokumentation"
+              placeholder="Kommentar hinzufügen..."
               className="time-tracer__text-input"
               disabled={busy || loading}
             />

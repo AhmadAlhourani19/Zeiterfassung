@@ -96,7 +96,7 @@
 }
 
 .time-tracer__text-input {
-  @apply mt-1 w-full rounded-md border border-slate-200 border-b-slate-400 bg-white px-3 py-2 text-sm outline-none transition hover:border-b-sky-800 focus:border-b-sky-800 focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
+  @apply mt-1 w-full rounded-md border border-slate-200 border-b-slate-400 bg-white px-3 py-2 text-sm outline-none transition hover:border-b-sky-800 focus:shadow-[inset_0_-1px_0_0_theme(colors.sky.800)] focus:border-b-sky-800 focus:ring-0 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500;
 }
 
 .time-tracer__project-trigger {
@@ -158,7 +158,7 @@
   px-3 py-2 text-sm
   outline-none transition
   hover:border-b-sky-800
-  focus:border-b-sky-800 focus:ring-0;
+  focus:shadow-[inset_0_-1px_0_0_theme(colors.sky.800)] focus:border-b-sky-800 focus:ring-0;
 }
 
 .time-tracer__project-list {
@@ -259,7 +259,7 @@ rechts: runder Icon-Kreis */
   @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100;
 }
 
-/* Icons für Schalter */
+/* Icons fï¿½r Schalter */
 .time-tracer__action-card-icon {
   @apply h-5 w-5;
 }

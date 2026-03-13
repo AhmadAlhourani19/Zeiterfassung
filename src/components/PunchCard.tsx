@@ -97,7 +97,7 @@ export function PunchCard({ todayEntries, onPunched }: Props) {
           className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-300"
         />
 
-        <label className="mt-2 text-xs text-slate-500">Taetigkeit</label>
+        <label className="mt-2 text-xs text-slate-500">Tätigkeit</label>
         <input
           value={taetigkeit}
           onChange={(e) => setTaetigkeit(e.target.value)}

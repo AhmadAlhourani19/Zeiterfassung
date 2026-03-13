@@ -77,9 +77,6 @@
   @apply w-[40px] rounded-r-md rounded-l-none border-l border-white/30 px-0;
 }
 
-.projects-page__lookup-toggle-btn-icon {
-  @apply flex items-center justify-center h-4 w-4;
-}
 
 .projects-page__search-row {
   @apply mt-3;
@@ -95,7 +92,7 @@
   px-3 py-2 text-sm
   outline-none transition
   hover:border-b-sky-800
-  focus:border-b-sky-800 focus:ring-0;
+  focus:shadow-[inset_0_-1px_0_0_theme(colors.sky.800)] focus:border-b-sky-800 focus:ring-0;
 }
 
 

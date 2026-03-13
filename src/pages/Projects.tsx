@@ -216,28 +216,7 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
             if (e.key === "Enter") add();
           }}
         />
-
-        {/* <div className="projects-page__add-actions">
-          <button onClick={add} disabled={busy || loading} className="projects-page__add-btn">
-            Hinzufügen
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (lookupOpen) {
-                closeLookup();
-              } else {
-                setLookupOpen(true);
-              }
-            }}
-            disabled={busy || loading}
-            className="projects-page__lookup-toggle-btn"
-          >
-            <span className="projects-page__lookup-toggle-btn-icon">
-              <IconSearch />
-            </span>
-          </button>
-        </div> */}
+        
         <div className="projects-page__add-actions">
           <button
             type="button"
