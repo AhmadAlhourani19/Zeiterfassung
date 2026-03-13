@@ -14,7 +14,7 @@ import { formatDDMMYYYY, formatMMYYYY, getDisplayUserFromKey } from "../api/grou
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
 import { IoCaretForward, IoCaretBack } from "react-icons/io5";
 import { IconClose, IconStart } from "../components/Icons";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import "./styles/Reports.css";
 
 function toInputDate(ddmmyyyy: string) {
@@ -72,6 +72,21 @@ function formatTimeRounded(date: Date) {
   return rounded.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+function isBoldRow(row: string[]) {
+  const normalized = row.map((cell) => cell.trim().toLowerCase());
+  const filled = normalized.filter(Boolean);
+  if (!filled.length) return false;
+  if (filled.length === 1) return true;
+
+  if (normalized[0] === "monat" && normalized[1] === "projekt") return true;
+  if (normalized[0] === "datum" && normalized.includes("brutto")) return true;
+  if (normalized[0] === "datum" && normalized.includes("dauer")) return true;
+  if (normalized[0] === "start" && normalized.includes("ende")) return true;
+  if (normalized[0] === "gesamt" || normalized[1] === "gesamt") return true;
+
+  return false;
+}
+
 function downloadExcel(filename: string, rows: string[][], widthPx = 220) {
   const sheet = XLSX.utils.aoa_to_sheet(rows);
   const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
@@ -80,9 +95,21 @@ function downloadExcel(filename: string, rows: string[][], widthPx = 220) {
     sheet["!cols"] = Array.from({ length: columnCount }, () => ({ wpx: widthPx }));
   }
 
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    if (!isBoldRow(rows[rowIndex])) continue;
+    for (let colIndex = 0; colIndex < columnCount; colIndex++) {
+      const address = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+      const cell = sheet[address];
+      if (!cell) continue;
+      const currentStyle = (cell.s ?? {}) as { font?: { bold?: boolean } };
+      const currentFont = currentStyle.font ?? {};
+      cell.s = { ...currentStyle, font: { ...currentFont, bold: true } };
+    }
+  }
+
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "Bericht");
-  XLSX.writeFile(workbook, filename, { compression: true });
+  XLSX.writeFile(workbook, filename, { compression: true, cellStyles: true });
 }
 
 function normalizeProjectName(value: string) {
@@ -417,7 +444,7 @@ export function Reports() {
     const bruttoMinutes = dayStats.workMinutes + dayStats.breakMinutes;
     const nettoMinutes = dayStats.workMinutes;
     const rows: string[][] = [
-      ["Arbeitszeit mit pausen"],
+      ["Arbeitszeit mit Pausen"],
       ["Datum", "Brutto", "Netto", "Pause genommen", "Pause erforderlich", "Pause fehlend"],
       [
         dayKey,
@@ -439,7 +466,7 @@ export function Reports() {
       }
     }
 
-    rows.push([], ["Arbeitsphasen"], ["Start", "Ende", "Dauer", "Projekt"]);
+    rows.push([], ["Arbeitsphasen"], ["Start", "Ende", "Dauer", "Projekt", "Tätigkeit"]);
 
     for (const it of dayIntervals) {
       rows.push([
@@ -447,6 +474,7 @@ export function Reports() {
         formatTimeRounded(it.end),
         fmtHM(Math.round((+it.end - +it.start) / 60000)),
         it.project?.trim() ? it.project : "(ohne Projekt)",
+        it.taetigkeit?.trim() ? it.taetigkeit : "",
       ]);
     }
     downloadExcel(`bericht-tag-${dayKey}.xlsx`, rows);
@@ -455,7 +483,7 @@ export function Reports() {
   function handleExportMonth() {
     if (!monthEntries.length) return;
     const exportMonth = toExportMonthLabel(monthKey);
-    const rows: string[][] = [["Monat", "Projekt", "Arbeitszeit"]];
+    const rows: string[][] = [["Projektzeiten"], ["Monat", "Projekt", "Arbeitszeit"]];
 
     if (!monthProjectTotals.length) {
       rows.push([exportMonth, "(keine Projekte)", fmtHM(0)]);
@@ -467,8 +495,12 @@ export function Reports() {
 
     rows.push(["", "Gesamt", fmtHM(monthTotalMinutes)]);
 
+    if (monthProjectSections.length) {
+      rows.push([], ["Einzelne Projekte im diesem Monat"]);
+    }
+
     for (const section of monthProjectSections) {
-      rows.push([], [section.name], ["Datum", "Dauer", "Name", "Taetigkeit"]);
+      rows.push([], [section.name], ["Datum", "Dauer", "Name", "Tätigkeit"]);
       for (const row of section.rows) {
         rows.push([row.date, fmtHM(row.minutes), exportUserName, row.taetigkeit]);
       }
@@ -688,7 +720,7 @@ export function Reports() {
     <div className="reports-page">
       <div className="reports-page__section">
         <h2 className="reports-page__title">Berichte</h2>
-        <p className="reports-page__subtitle">Tages- und Monatsuebersichten</p>
+        <p className="reports-page__subtitle">Tages- und Monatsübersichten</p>
 
         <div className="reports-page__summary-grid">
           <div className="reports-page__panel">
@@ -1085,6 +1117,10 @@ export function Reports() {
     </div>
   );
 }
+
+
+
+
 
 
 

@@ -20,7 +20,7 @@ export function PunchTable({ title, entries }: { title: string; entries: Stempel
               <th className="text-left px-5 py-3 font-medium">Zeit</th>
               <th className="text-left px-5 py-3 font-medium">Typ</th>
               <th className="text-left px-5 py-3 font-medium">Projekt</th>
-              <th className="text-left px-5 py-3 font-medium">Taetigkeit</th>
+              <th className="text-left px-5 py-3 font-medium">Tätigkeit</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

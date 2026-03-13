@@ -271,7 +271,7 @@ export function Status({ entries, loading, error, onReload }: Props) {
                         )}
                         {name}
                         {project && <div className="status-page__project">{project}</div>}
-                        {taetigkeit && <div className="status-page__project">Taetigkeit: {taetigkeit}</div>}
+                        {taetigkeit && <div className="status-page__project">Tätigkeit: {taetigkeit}</div>}
                         {time && <span className="status-page__time">� {time}</span>}
                       </div>
 

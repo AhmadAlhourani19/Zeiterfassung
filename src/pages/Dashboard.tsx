@@ -102,7 +102,7 @@ export default function Dashboard() {
 
   function handleExportToday() {
     if (!todayEntries.length) return;
-    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Taetigkeit"]];
+    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Tätigkeit"]];
     const sorted = [...todayEntries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
     for (const entry of sorted) {
       rows.push([
@@ -118,7 +118,7 @@ export default function Dashboard() {
 
   function handleExportMonth() {
     if (!monthEntries.length) return;
-    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Taetigkeit"]];
+    const rows: string[][] = [["Datum", "Zeit", "Typ", "Projekt", "Tätigkeit"]];
     const sorted = [...monthEntries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
     for (const entry of sorted) {
       rows.push([
