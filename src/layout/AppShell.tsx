@@ -86,8 +86,8 @@ export function AppShell({
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mb-4 flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-4 py-2 shadow-sm lg:hidden">
+      <div className="mx-auto max-w-6xl sm:px-4 sm:py-6">
+        <div className="flex items-center justify-between sm:mb-4 sm:rounded-3xl sm:border sm:border-slate-200 sm:bg-white px-5 py-4 sm:px-4 sm:py-2 sm:shadow-sm lg:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}

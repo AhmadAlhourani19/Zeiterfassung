@@ -13,7 +13,8 @@ import type { ProjectEntry, StempeluhrEntry } from "../api/types";
 import { formatDDMMYYYY, formatMMYYYY, getDisplayUserFromKey } from "../api/grouping";
 import { buildIntervalsForDay, calcWorkAndBreak, fmtHM } from "../utils/timeCalc";
 import { IoCaretForward, IoCaretBack } from "react-icons/io5";
-import { IconClose, IconStart } from "../components/Icons";
+import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/react";
+import { IconClose, IconStart, IconProjekt, IconTaetigkeit, IconMore } from "../components/Icons";
 import * as XLSX from "xlsx-js-style";
 import "./styles/Reports.css";
 
@@ -339,7 +340,7 @@ export function Reports() {
       const normalized = normalizeDisplayName(entry.Key);
       if (normalized) return normalized;
     }
-    return "";
+    return "Bitte Seite neuladen";
   }, [dayEntries, monthEntries]);
 
   async function loadDay(targetDayKey = dayKey) {
@@ -483,7 +484,14 @@ export function Reports() {
   function handleExportMonth() {
     if (!monthEntries.length) return;
     const exportMonth = toExportMonthLabel(monthKey);
-    const rows: string[][] = [["Projektzeiten"], ["Monat", "Projekt", "Arbeitszeit"]];
+    const rows: string[][] = [
+      ["Arbeitszeit"],
+      ["Monat", "Gesamt Arbeitszeit"],
+      [exportMonth, fmtHM(monthTotalMinutes)],
+      [],
+      ["Projektzeiten"],
+      ["Monat", "Projekt", "Arbeitszeit"],
+    ];
 
     if (!monthProjectTotals.length) {
       rows.push([exportMonth, "(keine Projekte)", fmtHM(0)]);
@@ -718,340 +726,416 @@ export function Reports() {
 
   return (
     <div className="reports-page">
-      <div className="reports-page__section">
-        <h2 className="reports-page__title">Berichte</h2>
-        <p className="reports-page__subtitle">Tages- und Monatsübersichten</p>
+      <div className="reports-page__header">
+        <h2 className="reports-page__title">Berichte</h2>        
+      </div>
+      <p className="reports-page__subtitle">Tages- und Monatsübersichten</p>
 
-        <div className="reports-page__summary-grid">
-          <div className="reports-page__panel">
-            <div className="reports-page__panel-title">Tagesbericht</div>
-            <div className="reports-page__controls">
-              <button type="button" onClick={() => void goDay(-1)} className="reports-page__icon-btn">
-                <IoCaretBack className="reports-page__icon" />
-              </button>
+      <div className="reports-page__summary-grid">
+        <div className="reports-page__panel">
+          <div className="reports-page__panel-title">Tagesbericht</div>
+          <div className="reports-page__controls">
+            <button type="button" onClick={() => void goDay(-1)} className="reports-page__icon-btn">
+              <IoCaretBack className="reports-page__icon" />
+            </button>
 
-              <input
-                type="date"
-                value={toInputDate(dayKey)}
-                onChange={(e) => {
-                  const next = fromInputDate(e.target.value);
-                  setDayKey(next);
-                  void loadDay(next);
-                }}
-                className="reports-page__input"
-              />
+            <input
+              type="date"
+              value={toInputDate(dayKey)}
+              onChange={(e) => {
+                const next = fromInputDate(e.target.value);
+                setDayKey(next);
+                void loadDay(next);
+              }}
+              className="reports-page__input"
+            />
 
-              <button type="button" onClick={() => void goDay(1)} className="reports-page__icon-btn">
-                <IoCaretForward className="reports-page__icon" />
-              </button>
+            <button type="button" onClick={() => void goDay(1)} className="reports-page__icon-btn">
+              <IoCaretForward className="reports-page__icon" />
+            </button>
 
-              <button
-                type="button"
-                onClick={handleExportDay}
-                disabled={loading || dayEntries.length === 0}
-                className="reports-page__export-btn"
-              >
-                Speichern
-              </button>
-            </div>
-
-            <div className="reports-page__metric">
-              Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes + dayStats.breakMinutes)}</span> / Netto:{" "}
-              <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span>
-            </div>
-            <div className="reports-page__metric-detail">
-              Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
-              {fmtHM(dayStats.missingBreak)}
-            </div>
-
-            {actionError && <div className="reports-page__error reports-page__error--inline">{actionError}</div>}
-            {actionInfo && <div className="reports-page__info">{actionInfo}</div>}
-
-            <div className="reports-page__panel-subheader">
-              <h3 className="reports-page__panel-subtitle">Arbeitsphasen ({dayKey})</h3>
-            </div>
-
-            <div className="reports-page__list">
-              {dayIntervals.length === 0 ? (
-                <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
-              ) : (
-                dayIntervals.map((it, idx) => {
-                  const currentProject = it.project?.trim() ? it.project : "(ohne Projekt)";
-                  const editKey = intervalKey(it.start, idx);
-                  const isEditingProject = editIntervalKey === editKey && editProjectMenuOpen;
-                  const isEditingTaetigkeit = editIntervalKey === editKey && editTaetigkeitMenuOpen;
-                  const disabled = loading || actionBusyKey !== null;
-
-                  return (
-                    <div key={`${dayKey}-${idx}`} className="reports-page__row reports-page__row--project">
-                      <div className="reports-page__project-main">
-                        <div className="reports-page__row-main">
-                          <span className="reports-page__row-time">
-                            {formatTimeRounded(it.start)} - {formatTimeRounded(it.end)}
-                          </span>
-                          {currentProject !== "(ohne Projekt)" && (
-                            <span className="reports-page__row-project"> | {currentProject}</span>
-                          )}
-                          {currentProject === "(ohne Projekt)" && (
-                            <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
-                          )}
-                          {it.taetigkeit?.trim() && (
-                            <div className="reports-page__row-meta">Tätigkeit: {it.taetigkeit}</div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="reports-page__project-actions">
-                        <div className="reports-page__project-minutes">
-                          {fmtHM(Math.round((+it.end - +it.start) / 60000))}
-                        </div>
-
-                        <div className="reports-page__split-btn-group">
-                          <button
-                            type="button"
-                            onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
-                            disabled={disabled}
-                            className="reports-page__split-btn reports-page__split-btn--left"
-                            title="Projekt Ändern"
-                          >
-                            {isEditingProject ? "Projekt..." : "Projekt"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
-                            disabled={disabled}
-                            className="reports-page__split-btn reports-page__split-btn--middle"
-                            title="Tätigkeit Ändern"
-                          >
-                            {isEditingTaetigkeit ? "Tätigkeit..." : "Tätigkeit"}
-                          </button>                         
-
-                          <button
-                            type="button"
-                            onClick={() => void activateProject(currentProject, it.taetigkeit)}
-                            disabled={disabled}
-                            className="reports-page__split-btn reports-page__split-btn--icon"
-                            title="Projekt starten"
-                          >
-                            <span className="reports-page__lookup-btn-start-icon">
-                              <IconStart />
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="reports-page__panel-subheader">
-              <h3 className="reports-page__panel-subtitle">Projekt-Summary (Tag)</h3>
-            </div>
-
-            <div className="reports-page__list">
-              {dayProjectTotals.length === 0 ? (
-                <div className="reports-page__empty">Keine Projektzeit an diesem Tag.</div>
-              ) : (
-                dayProjectTotals.map((project) => (
-                  <div key={`${dayKey}-sum-${project.name}`} className="reports-page__row">
-                    <div className="reports-page__project-name">{project.name}</div>
-                    <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
-                  </div>
-                ))
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={handleExportDay}
+              disabled={loading || dayEntries.length === 0}
+              className="reports-page__export-btn"
+            >
+              Speichern
+            </button>
           </div>
 
-          <div className="reports-page__panel">
-            <div className="reports-page__panel-title">Monatsbericht</div>
-            <div className="reports-page__controls">
-              <button type="button" onClick={() => void goMonth(-1)} className="reports-page__icon-btn">
-                <IoCaretBack className="reports-page__icon" />
-              </button>
+          <div className="reports-page__metric">
+            Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes + dayStats.breakMinutes)}</span> / Netto:{" "}
+            <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span>
+          </div>
+          <div className="reports-page__metric-detail">
+            Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
+            {fmtHM(dayStats.missingBreak)}
+          </div>
 
-              <input
-                type="month"
-                value={toInputMonth(monthKey)}
-                onChange={(e) => {
-                  const next = fromInputMonth(e.target.value);
-                  setMonthKey(next);
-                  void loadMonth(next);
-                }}
-                className="reports-page__input"
-              />
+          {actionError && <div className="reports-page__error reports-page__error--inline">{actionError}</div>}
+          {actionInfo && <div className="reports-page__info">{actionInfo}</div>}
 
-              <button type="button" onClick={() => void goMonth(1)} className="reports-page__icon-btn">
-                <IoCaretForward className="reports-page__icon" />
-              </button>
+          <div className="reports-page__panel-subheader">
+            <h3 className="reports-page__panel-subtitle">Arbeitsphasen ({dayKey})</h3>
+          </div>
 
-              <button
-                type="button"
-                onClick={handleExportMonth}
-                disabled={loading || monthEntries.length === 0}
-                className="reports-page__export-btn"
-              >
-                Speichern
-              </button>
-            </div>
+          <div className="reports-page__list">
+            {dayIntervals.length === 0 ? (
+              <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
+            ) : (
+              dayIntervals.map((it, idx) => {
+                const currentProject = it.project?.trim() ? it.project : "(ohne Projekt)";
+                const editKey = intervalKey(it.start, idx);
+                const isEditingProject = editIntervalKey === editKey && editProjectMenuOpen;
+                const isEditingTaetigkeit = editIntervalKey === editKey && editTaetigkeitMenuOpen;
+                const disabled = loading || actionBusyKey !== null;
 
-            <div className="reports-page__metric">
-              Buchungen im Monat: <span className="reports-page__metric-value">{monthEntries.length}</span>
-            </div>
-            <div className="reports-page__metric">
-              Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
-            </div>
-
-            <div className="reports-page__panel-subheader">
-              <h3 className="reports-page__panel-subtitle">Projektzeiten (Monat {monthKey})</h3>
-            </div>
-
-            <div className="reports-page__list">
-              {monthProjectTotals.length === 0 ? (
-                <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
-              ) : (
-                monthProjectTotals.map((project) => {                  
-                  return (
-                    <div key={`${monthKey}-${project.name}`} className="reports-page__row reports-page__row--project">
-                      <div className="reports-page__project-main">
-                        <div className="reports-page__project-name">{project.name}</div>
-                      </div>
-                      <div className="reports-page__project-actions">
-                        <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>                        
+                return (
+                  <div key={`${dayKey}-${idx}`} className="reports-page__row reports-page__row--project">
+                    <div className="reports-page__project-main">
+                      <div className="reports-page__row-main">
+                        <span className="reports-page__row-time">
+                          {formatTimeRounded(it.start)} - {formatTimeRounded(it.end)}
+                        </span>
+                        {currentProject !== "(ohne Projekt)" && (
+                          <span className="reports-page__row-project"> | {currentProject}</span>
+                        )}
+                        {currentProject === "(ohne Projekt)" && (
+                          <span className="reports-page__row-project-muted"> | (ohne Projekt)</span>
+                        )}
+                        {it.taetigkeit?.trim() && (
+                          <div className="reports-page__row-meta">Tätigkeit: {it.taetigkeit}</div>
+                        )}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    <div className="reports-page__project-actions">
+                      <div className="reports-page__project-minutes">
+                        {fmtHM(Math.round((+it.end - +it.start) / 60000))}
+                      </div>
+
+                      {/* Mobile: Normale Buttons */}
+                      <div className="reports-page__split-btn-group sm:hidden">
+                        <button
+                          type="button"
+                          onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
+                          disabled={disabled}
+                          className="reports-page__split-btn reports-page__split-btn--left"
+                          title="Projekt ändern"
+                        >
+                          {isEditingProject ? "Projekt..." : "Projekt"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
+                          disabled={disabled}
+                          className="reports-page__split-btn reports-page__split-btn--middle"
+                          title="Tätigkeit ändern"
+                        >
+                          {isEditingTaetigkeit ? "Tätigkeit..." : "Tätigkeit"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => void activateProject(currentProject, it.taetigkeit)}
+                          disabled={disabled}
+                          className="reports-page__split-btn reports-page__split-btn--icon"
+                          title="Projekt starten"
+                        >
+                          <span className="reports-page__lookup-btn-start-icon">
+                            <IconStart />
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Desktop Dropdown */}
+                      <div className="hidden sm:flex items-center">
+                        <Menu as="div" className="relative inline-block text-left">
+                          <MenuButton
+                            disabled={disabled}
+                            className="reports-page__dropdown-trigger"
+                            title="Mehr Optionen"
+                          >
+                            <IconMore className="reports-icon" />
+                          </MenuButton>
+
+                          <MenuItems
+                            anchor="bottom end"
+                            className="reports-page__dropdown-menu"
+                          >
+                            <div className="py-1">
+                              <MenuItem>
+                                {({ focus }) => (
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
+                                    disabled={disabled}
+                                    className={[
+                                      "reports-page__dropdown-item group",
+                                      focus ? "reports-page__dropdown-item--active" : "",
+                                    ].join(" ")}
+                                  >
+                                    <IconProjekt className="reports-page__dropdown-item-icon" />
+                                    <span>{isEditingProject ? "Projekt..." : "Projekt ändern"}</span>
+                                  </button>
+                                )}
+                              </MenuItem>
+
+                              <MenuItem>
+                                {({ focus }) => (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)
+                                    }
+                                    disabled={disabled}
+                                    className={[
+                                      "reports-page__dropdown-item group",
+                                      focus ? "reports-page__dropdown-item--active" : "",
+                                    ].join(" ")}
+                                  >
+                                    <IconTaetigkeit className="reports-page__dropdown-item-icon" />
+                                    <span>{isEditingTaetigkeit ? "Tätigkeit..." : "Tätigkeit ändern"}</span>
+                                  </button>
+                                )}
+                              </MenuItem>
+
+                              <MenuItem>
+                                {({ focus }) => (
+                                  <button
+                                    type="button"
+                                    onClick={() => void activateProject(currentProject, it.taetigkeit)}
+                                    disabled={disabled}
+                                    className={[
+                                      "reports-page__dropdown-item group",
+                                      focus ? "reports-page__dropdown-item--active" : "",
+                                    ].join(" ")}
+                                  >
+                                    <IconStart className="reports-page__dropdown-item-icon" />
+                                    <span>Projekt starten</span>
+                                  </button>
+                                )}
+                              </MenuItem>
+                            </div>
+                          </MenuItems>
+                        </Menu>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="reports-page__panel-subheader">
+            <h3 className="reports-page__panel-subtitle">Projekt-Summary (Tag)</h3>
+          </div>
+
+          <div className="reports-page__list">
+            {dayProjectTotals.length === 0 ? (
+              <div className="reports-page__empty">Keine Projektzeit an diesem Tag.</div>
+            ) : (
+              dayProjectTotals.map((project) => (
+                <div key={`${dayKey}-sum-${project.name}`} className="reports-page__row">
+                  <div className="reports-page__project-name">{project.name}</div>
+                  <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        {editProjectMenuOpen && (
-          <div className="reports-page__project-overlay" onClick={cancelEditProject}>
-            <div
-              className="reports-page__project-menu"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Projekt bearbeiten"
-              onClick={(event) => event.stopPropagation()}
+        <div className="reports-page__panel">
+          <div className="reports-page__panel-title">Monatsbericht</div>
+          <div className="reports-page__controls">
+            <button type="button" onClick={() => void goMonth(-1)} className="reports-page__icon-btn">
+              <IoCaretBack className="reports-page__icon" />
+            </button>
+
+            <input
+              type="month"
+              value={toInputMonth(monthKey)}
+              onChange={(e) => {
+                const next = fromInputMonth(e.target.value);
+                setMonthKey(next);
+                void loadMonth(next);
+              }}
+              className="reports-page__input"
+            />
+
+            <button type="button" onClick={() => void goMonth(1)} className="reports-page__icon-btn">
+              <IoCaretForward className="reports-page__icon" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportMonth}
+              disabled={loading || monthEntries.length === 0}
+              className="reports-page__export-btn"
             >
-              <div className="reports-page__project-menu-header">
-                <div>
-                  <div className="reports-page__project-menu-title">Projekt bearbeiten</div>
-                  <div className="reports-page__project-menu-subtitle">
-                    {editSelectOptions.length} Optionen
+              Speichern
+            </button>
+          </div>
+
+          <div className="reports-page__metric">
+            Buchungen im Monat: <span className="reports-page__metric-value">{monthEntries.length}</span>
+          </div>
+          <div className="reports-page__metric">
+            Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
+          </div>
+
+          <div className="reports-page__panel-subheader">
+            <h3 className="reports-page__panel-subtitle">Projektzeiten (Monat {monthKey})</h3>
+          </div>
+
+          <div className="reports-page__list">
+            {monthProjectTotals.length === 0 ? (
+              <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
+            ) : (
+              monthProjectTotals.map((project) => {
+                return (
+                  <div key={`${monthKey}-${project.name}`} className="reports-page__row reports-page__row--project">
+                    <div className="reports-page__project-main">
+                      <div className="reports-page__project-name">{project.name}</div>
+                    </div>
+                    <div className="reports-page__project-actions">
+                      <div className="reports-page__project-minutes">{fmtHM(project.minutes)}</div>
+                    </div>
                   </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {editProjectMenuOpen && (
+        <div className="reports-page__project-overlay" onClick={cancelEditProject}>
+          <div
+            className="reports-page__project-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Projekt bearbeiten"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="reports-page__project-menu-header">
+              <div>
+                <div className="reports-page__project-menu-title">Projekt bearbeiten</div>
+                <div className="reports-page__project-menu-subtitle">
+                  {editSelectOptions.length} Optionen
                 </div>
-                <button
-                  type="button"
-                  onClick={cancelEditProject}
-                  className="reports-page__project-menu-close"
-                  aria-label="Schliessen"
-                >
-                  <IconClose className="h-5 w-5 text-slate-600" />
-                </button>
               </div>
+              <button
+                type="button"
+                onClick={cancelEditProject}
+                className="reports-page__project-menu-close"
+                aria-label="Schliessen"
+              >
+                <IconClose className="h-5 w-5 text-slate-600" />
+              </button>
+            </div>
 
-              <input
-                value={editProjectQuery}
-                onChange={(event) => setEditProjectQuery(event.target.value)}
-                placeholder="Projekt suchen..."
-                className="reports-page__project-search"
+            <input
+              value={editProjectQuery}
+              onChange={(event) => setEditProjectQuery(event.target.value)}
+              placeholder="Projekt suchen..."
+              className="reports-page__project-search"
+              disabled={loading || actionBusyKey !== null}
+            />
+
+            <div className="reports-page__project-list">
+              {filteredEditOptions.length === 0 && (
+                <div className="reports-page__project-empty">Keine Treffer.</div>
+              )}
+
+              {filteredEditOptions.map((option) => {
+                const isActive = normalizeProjectName(option) === normalizeProjectName(editProjectValue);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setEditProjectValue(option)}
+                    className={[
+                      "reports-page__project-item",
+                      isActive ? "reports-page__project-item--active" : "",
+                    ]
+                      .join(" ")
+                      .trim()}
+                  >
+                    <span className="reports-page__project-item-name" title={option}>
+                      {option}
+                    </span>
+                    {isActive && <span className="reports-page__project-item-tag">Aktiv</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="reports-page__project-menu-actions">
+              <button
+                type="button"
+                onClick={cancelEditProject}
+                className="reports-page__row-btn"
                 disabled={loading || actionBusyKey !== null}
-              />
-
-              <div className="reports-page__project-list">
-                {filteredEditOptions.length === 0 && (
-                  <div className="reports-page__project-empty">Keine Treffer.</div>
-                )}
-
-                {filteredEditOptions.map((option) => {
-                  const isActive = normalizeProjectName(option) === normalizeProjectName(editProjectValue);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setEditProjectValue(option)}
-                      className={[
-                        "reports-page__project-item",
-                        isActive ? "reports-page__project-item--active" : "",
-                      ]
-                        .join(" ")
-                        .trim()}
-                    >
-                      <span className="reports-page__project-item-name" title={option}>
-                        {option}
-                      </span>
-                      {isActive && <span className="reports-page__project-item-tag">Aktiv</span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="reports-page__project-menu-actions">
-                <button
-                  type="button"
-                  onClick={cancelEditProject}
-                  className="reports-page__row-btn"
-                  disabled={loading || actionBusyKey !== null}
-                >
-                  Abbrechen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void saveEditedProject()}
-                  className="reports-page__row-btn reports-page__row-btn--primary"
-                  disabled={loading || actionBusyKey !== null || !editProjectValue.trim()}
-                >
-                  Speichern
-                </button>
-              </div>
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveEditedProject()}
+                className="reports-page__row-btn reports-page__row-btn--primary"
+                disabled={loading || actionBusyKey !== null || !editProjectValue.trim()}
+              >
+                Speichern
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {editTaetigkeitMenuOpen && (
-          <div className="reports-page__project-overlay" onClick={cancelEditTaetigkeit}>
-            <div
-              className="reports-page__project-menu"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Tätigkeit bearbeiten"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="reports-page__project-menu-header">
-                <div>
-                  <div className="reports-page__project-menu-title">Tätigkeit bearbeiten</div>
-                  <div className="reports-page__project-menu-subtitle">
-                    Projekt: {editTaetigkeitContext?.projectName ?? "(ohne Projekt)"}
-                  </div>
+      {editTaetigkeitMenuOpen && (
+        <div className="reports-page__project-overlay" onClick={cancelEditTaetigkeit}>
+          <div
+            className="reports-page__project-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tätigkeit bearbeiten"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="reports-page__project-menu-header">
+              <div>
+                <div className="reports-page__project-menu-title">Tätigkeit bearbeiten</div>
+                <div className="reports-page__project-menu-subtitle">
+                  Projekt: {editTaetigkeitContext?.projectName ?? "(ohne Projekt)"}
                 </div>
-                <button
-                  type="button"
-                  onClick={cancelEditTaetigkeit}
-                  className="reports-page__project-menu-close"
-                  aria-label="Schliessen"
-                >
-                  <IconClose className="h-5 w-5 text-slate-600" />
-                </button>
               </div>
+              <button
+                type="button"
+                onClick={cancelEditTaetigkeit}
+                className="reports-page__project-menu-close"
+                aria-label="Schliessen"
+              >
+                <IconClose className="h-5 w-5 text-slate-600" />
+              </button>
+            </div>
 
-              <label className="reports-page__field-label" htmlFor="reports-edit-taetigkeit-value">
-                Tätigkeit (frei eingeben oder unten auswählen)
-              </label>
-              <input
-                id="reports-edit-taetigkeit-value"
-                value={editTaetigkeitValue}
-                onChange={(event) => setEditTaetigkeitValue(event.target.value)}
-                placeholder="Neue Tätigkeit"
-                className="reports-page__project-search"
-                disabled={loading || actionBusyKey !== null}
-              />
+            <label className="reports-page__field-label" htmlFor="reports-edit-taetigkeit-value">
+              Tätigkeit (frei eingeben oder unten auswählen)
+            </label>
+            <input
+              id="reports-edit-taetigkeit-value"
+              value={editTaetigkeitValue}
+              onChange={(event) => setEditTaetigkeitValue(event.target.value)}
+              placeholder="Neue Tätigkeit"
+              className="reports-page__project-search"
+              disabled={loading || actionBusyKey !== null}
+            />
 
-              {/* Suchen brauchen wir nicht */}
-              {/* <input
+            {/* Suchen brauchen wir nicht */}
+            {/* <input
                 value={editTaetigkeitQuery}
                 onChange={(event) => setEditTaetigkeitQuery(event.target.value)}
                 placeholder="Suchen..."
@@ -1059,86 +1143,61 @@ export function Reports() {
                 disabled={loading || actionBusyKey !== null}
               /> */}
 
-              <div className="reports-page__project-list">
-                {filteredTaetigkeitOptions.length === 0 && (
-                  <div className="reports-page__project-empty">Keine Treffer.</div>
-                )}
+            <div className="reports-page__project-list">
+              {filteredTaetigkeitOptions.length === 0 && (
+                <div className="reports-page__project-empty">Keine Treffer.</div>
+              )}
 
-                {filteredTaetigkeitOptions.map((option) => {
-                  const normalizedOption = option === "Ohne Tätigkeit" ? "" : option;
-                  const isActive = normalizeText(normalizedOption) === normalizeText(editTaetigkeitValue);
+              {filteredTaetigkeitOptions.map((option) => {
+                const normalizedOption = option === "Ohne Tätigkeit" ? "" : option;
+                const isActive = normalizeText(normalizedOption) === normalizeText(editTaetigkeitValue);
 
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setEditTaetigkeitValue(normalizedOption)}
-                      className={[
-                        "reports-page__project-item",
-                        isActive ? "reports-page__project-item--active" : "",
-                      ]
-                        .join(" ")
-                        .trim()}
-                    >
-                      <span className="reports-page__project-item-name" title={option}>
-                        {option}
-                      </span>
-                      {isActive && <span className="reports-page__project-item-tag">Aktiv</span>}
-                    </button>
-                  );
-                })}
-              </div>
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setEditTaetigkeitValue(normalizedOption)}
+                    className={[
+                      "reports-page__project-item",
+                      isActive ? "reports-page__project-item--active" : "",
+                    ]
+                      .join(" ")
+                      .trim()}
+                  >
+                    <span className="reports-page__project-item-name" title={option}>
+                      {option}
+                    </span>
+                    {isActive && <span className="reports-page__project-item-tag">Aktiv</span>}
+                  </button>
+                );
+              })}
+            </div>
 
-              <div className="reports-page__project-menu-actions">
-                <button
-                  type="button"
-                  onClick={cancelEditTaetigkeit}
-                  className="reports-page__row-btn"
-                  disabled={loading || actionBusyKey !== null}
-                >
-                  Abbrechen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void saveEditedTaetigkeit()}
-                  className="reports-page__row-btn reports-page__row-btn--primary"
-                  disabled={loading || actionBusyKey !== null}
-                >
-                  Speichern
-                </button>
-              </div>
+            <div className="reports-page__project-menu-actions">
+              <button
+                type="button"
+                onClick={cancelEditTaetigkeit}
+                className="reports-page__row-btn"
+                disabled={loading || actionBusyKey !== null}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveEditedTaetigkeit()}
+                className="reports-page__row-btn reports-page__row-btn--primary"
+                disabled={loading || actionBusyKey !== null}
+              >
+                Speichern
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {err && <div className="reports-page__error">{err}</div>}
-        {loading && <div className="reports-page__loading">Lade...</div>}
-      </div>
+      {err && <div className="reports-page__error">{err}</div>}
+      {loading && <div className="reports-page__loading">Lade...</div>}
+
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

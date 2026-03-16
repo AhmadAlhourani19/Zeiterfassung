@@ -53,7 +53,7 @@
 }
 
 .status-page__table {
-  @apply min-w-0 rounded-2xl border border-slate-200;
+  @apply min-w-0 rounded-2xl border border-slate-200 overflow-hidden;
 }
 
 @media (min-width: 640px) {

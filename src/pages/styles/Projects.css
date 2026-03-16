@@ -92,7 +92,7 @@
   px-3 py-2 text-sm
   outline-none transition
   hover:border-b-sky-800
-  focus:shadow-[inset_0_-1px_0_0_theme(colors.sky.800)] focus:border-b-sky-800 focus:ring-0;
+  focus:outline-none focus:shadow-[inset_0_-1px_0_0_theme(colors.sky.800)] focus:border-b-sky-800 focus:ring-0;
 }
 
 
