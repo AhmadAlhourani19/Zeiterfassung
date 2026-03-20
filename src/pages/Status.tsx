@@ -110,6 +110,7 @@ function getStatus(entry: StatusEntry) {
   const bt = (entry.Buchungstyp ?? "").trim();
   if (bt === "0") return { label: "Online", tone: "online" as const };
   if (bt === "2") return { label: "Pause", tone: "break" as const };
+  if (bt === "10") return { label: "Außer Haus", tone: "outside" as const };
   if (bt === "" || bt === "1") return { label: "Offline", tone: "offline" as const };
   if (entry.Status) return { label: entry.Status, tone: "break" as const };
   return { label: "Unbekannt", tone: "break" as const };
@@ -134,6 +135,14 @@ export function Status({ entries, loading, error, onReload }: Props) {
     return ["Alle", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [entries]);
 
+  function getStatusRank(status: ReturnType<typeof getStatus>) {
+    if (status.tone === "online") return 0;
+    if (status.tone === "break") return 1;
+    if (status.tone === "outside") return 2;
+    if (status.tone === "offline") return 3;
+    return 4;
+  }
+
   const sorted = useMemo(() => {
     const mapped = entries.map((entry) => {
       const status = getStatus(entry);
@@ -142,16 +151,19 @@ export function Status({ entries, loading, error, onReload }: Props) {
       const project = getProject(entry);
       const time = formatTime(entry.Zeit);
       const taetigkeit = getTaetigkeit(entry);
-      const rank = status.label.toLowerCase().includes("online") ? 0 : 1;
+      const rank = getStatusRank(status);
+
       return { entry, status, name, standort, project, taetigkeit, time, rank };
     });
 
     return mapped.sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
+
       if (sortBy === "status") {
         if (a.rank !== b.rank) return (a.rank - b.rank) * dir;
         return a.name.localeCompare(b.name) * dir;
       }
+
       if (a.name !== b.name) return a.name.localeCompare(b.name) * dir;
       if (a.rank !== b.rank) return (a.rank - b.rank) * dir;
       return a.standort.localeCompare(b.standort) * dir;
@@ -251,8 +263,10 @@ export function Status({ entries, loading, error, onReload }: Props) {
                     status.tone === "online"
                       ? "status-page__badge--online"
                       : status.tone === "offline"
-                      ? "status-page__badge--offline"
-                      : "status-page__badge--break",
+                        ? "status-page__badge--offline"
+                        : status.tone === "outside"
+                          ? "status-page__badge--outside"
+                          : "status-page__badge--break",
                   ].join(" ");
 
                   return (

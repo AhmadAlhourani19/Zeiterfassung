@@ -26,7 +26,9 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const displayUser = userName?.trim() ? userName : "-";
+  const rawUser = userName?.trim() ?? "";
+  const isSignedOut = !rawUser || rawUser === "-";
+  const displayUser = isSignedOut ? "nicht angemeldet" : rawUser;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -51,7 +53,7 @@ export function AppShell({
         >
           <div className="mb-6">
             <div className="text-xs text-slate-500">Benutzer</div>
-            <div className="text-lg font-semibold">{displayUser}</div>
+            <div className={["text-lg font-semibold", isSignedOut ? "text-rose-600" : "text-slate-900"].join(" ")}>{displayUser}</div>
             {authError && (
               <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
                 {authError}
@@ -101,14 +103,14 @@ export function AppShell({
             </span>
           </button>
           <div className="text-sm font-semibold">{nav.find((item) => item.id === active)?.label}</div>
-          <div className="text-xs text-slate-500">{displayUser}</div>
+          <div className={["text-xs", isSignedOut ? "text-rose-600 font-semibold" : "text-slate-500"].join(" ")}>{displayUser}</div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           <aside className="hidden lg:block rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
             <div className="px-4 mb-4">
               <div className="text-xs text-slate-500">Benutzer</div>
-              <div className="text-lg font-semibold">{displayUser}</div>
+              <div className={["text-lg font-semibold", isSignedOut ? "text-rose-600" : "text-slate-900"].join(" ")}>{displayUser}</div>
               {authError && (
                 <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
                   {authError}
@@ -146,3 +148,5 @@ export function AppShell({
     </div>
   );
 }
+
+

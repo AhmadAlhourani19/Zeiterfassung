@@ -419,7 +419,7 @@ export function TimeTracer({
                         </span>
                         {!busy && (
                           <span className="time-tracer__action-card-subtitle">
-                            Pause beende
+                            Pause beenden
                           </span>
                         )}
                       </span>

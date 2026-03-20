@@ -232,6 +232,41 @@ export function Reports() {
       .sort((a, b) => b.minutes - a.minutes || a.name.localeCompare(b.name));
   }, [monthEntries]);
 
+  const monthStats = useMemo(() => {
+    const groupedByDay: Record<string, StempeluhrEntry[]> = {};
+
+    for (const entry of monthEntries) {
+      const day = formatDDMMYYYY(new Date(entry.Zeit));
+      if (!groupedByDay[day]) groupedByDay[day] = [];
+      groupedByDay[day].push(entry);
+    }
+
+    let workMinutes = 0;
+    let breakMinutes = 0;
+    let requiredBreak = 0;
+    let missingBreak = 0;
+    let netMinutes = 0;
+
+    for (const entries of Object.values(groupedByDay)) {
+      const intervals = buildIntervalsForDay(entries, new Date());
+      const stats = calcWorkAndBreak(intervals);
+
+      workMinutes += stats.workMinutes;
+      breakMinutes += stats.breakMinutes;
+      requiredBreak += stats.requiredBreak;
+      missingBreak += stats.missingBreak;
+      netMinutes += stats.workMinutes - stats.missingBreak;
+    }
+
+    return {
+      workMinutes,
+      breakMinutes,
+      requiredBreak,
+      missingBreak,
+      netMinutes,
+    };
+  }, [monthEntries]);
+
   const monthProjectTotals = useMemo(
     () => monthProjectSections.map(({ name, minutes }) => ({ name, minutes })),
     [monthProjectSections]
@@ -326,11 +361,6 @@ export function Reports() {
     return editTaetigkeitOptions.filter((option) => option.toLowerCase().includes(query));
   }, [editTaetigkeitOptions, editTaetigkeitQuery]);
 
-  const monthTotalMinutes = useMemo(
-    () => monthProjectTotals.reduce((sum, project) => sum + project.minutes, 0),
-    [monthProjectTotals]
-  );
-
   const exportUserName = useMemo(() => {
     for (const entry of dayEntries) {
       const normalized = normalizeDisplayName(entry.Key);
@@ -342,6 +372,32 @@ export function Reports() {
     }
     return "Bitte Seite neuladen";
   }, [dayEntries, monthEntries]);
+
+  const monthDayWorkTotals = useMemo(() => {
+    const groupedByDay: Record<string, StempeluhrEntry[]> = {};
+
+    for (const entry of monthEntries) {
+      const day = formatDDMMYYYY(new Date(entry.Zeit));
+      if (!groupedByDay[day]) groupedByDay[day] = [];
+      groupedByDay[day].push(entry);
+    }
+
+    return Object.entries(groupedByDay)
+      .map(([day, entries]) => {
+        const intervals = buildIntervalsForDay(entries, new Date());
+        const stats = calcWorkAndBreak(intervals);
+
+        return {
+          day,
+          bruttoMinutes: stats.workMinutes,
+          nettoMinutes: stats.netMinutes,
+          breakMinutes: stats.breakMinutes,
+          requiredBreak: stats.requiredBreak,
+          missingBreak: stats.missingBreak,
+        };
+      })
+      .sort((a, b) => +parseDayKey(a.day) - +parseDayKey(b.day));
+  }, [monthEntries]);
 
   async function loadDay(targetDayKey = dayKey) {
     setLoading(true);
@@ -442,8 +498,8 @@ export function Reports() {
 
   function handleExportDay() {
     if (!dayEntries.length) return;
-    const bruttoMinutes = dayStats.workMinutes + dayStats.breakMinutes;
-    const nettoMinutes = dayStats.workMinutes;
+    const bruttoMinutes = dayStats.workMinutes;
+    const nettoMinutes = dayStats.workMinutes - dayStats.missingBreak;
     const rows: string[][] = [
       ["Arbeitszeit mit Pausen"],
       ["Datum", "Brutto", "Netto", "Pause genommen", "Pause erforderlich", "Pause fehlend"],
@@ -483,11 +539,20 @@ export function Reports() {
 
   function handleExportMonth() {
     if (!monthEntries.length) return;
+
     const exportMonth = toExportMonthLabel(monthKey);
+
     const rows: string[][] = [
-      ["Arbeitszeit"],
-      ["Monat", "Gesamt Arbeitszeit"],
-      [exportMonth, fmtHM(monthTotalMinutes)],
+      ["Arbeitszeit mit Pausen"],
+      ["Monat", "Brutto", "Netto", "Pause genommen", "Pause erforderlich", "Pause fehlend"],
+      [
+        exportMonth,
+        fmtHM(monthStats.workMinutes),
+        fmtHM(monthStats.netMinutes),
+        fmtHM(monthStats.breakMinutes),
+        fmtHM(monthStats.requiredBreak),
+        fmtHM(monthStats.missingBreak),
+      ],
       [],
       ["Projektzeiten"],
       ["Monat", "Projekt", "Arbeitszeit"],
@@ -501,7 +566,7 @@ export function Reports() {
       }
     }
 
-    rows.push(["", "Gesamt", fmtHM(monthTotalMinutes)]);
+    rows.push(["", "Gesamt", fmtHM(monthStats.workMinutes)]);
 
     if (monthProjectSections.length) {
       rows.push([], ["Einzelne Projekte im diesem Monat"]);
@@ -726,55 +791,63 @@ export function Reports() {
 
   return (
     <div className="reports-page">
-      <div className="reports-page__header">
-        <h2 className="reports-page__title">Berichte</h2>        
+      <div className="hidden sm:block">
+        <div className="reports-page__header">
+          <h2 className="reports-page__title">Berichte</h2>
+        </div>
+        <p className="reports-page__subtitle">Tages- und Monatsübersichten</p>
       </div>
-      <p className="reports-page__subtitle">Tages- und Monatsübersichten</p>
+
 
       <div className="reports-page__summary-grid">
+
         <div className="reports-page__panel">
-          <div className="reports-page__panel-title">Tagesbericht</div>
-          <div className="reports-page__controls">
-            <button type="button" onClick={() => void goDay(-1)} className="reports-page__icon-btn">
-              <IoCaretBack className="reports-page__icon" />
-            </button>
+          <div className="reports-page__panel-top">
 
-            <input
-              type="date"
-              value={toInputDate(dayKey)}
-              onChange={(e) => {
-                const next = fromInputDate(e.target.value);
-                setDayKey(next);
-                void loadDay(next);
-              }}
-              className="reports-page__input"
-            />
+            <div className="reports-page__panel-title">Tagesbericht</div>
+            <div className="reports-page__controls">
+              <button type="button" onClick={() => void goDay(-1)} className="reports-page__icon-btn">
+                <IoCaretBack className="reports-page__icon" />
+              </button>
 
-            <button type="button" onClick={() => void goDay(1)} className="reports-page__icon-btn">
-              <IoCaretForward className="reports-page__icon" />
-            </button>
+              <input
+                type="date"
+                value={toInputDate(dayKey)}
+                onChange={(e) => {
+                  const next = fromInputDate(e.target.value);
+                  setDayKey(next);
+                  void loadDay(next);
+                }}
+                className="reports-page__input"
+              />
 
-            <button
-              type="button"
-              onClick={handleExportDay}
-              disabled={loading || dayEntries.length === 0}
-              className="reports-page__export-btn"
-            >
-              Speichern
-            </button>
+              <button type="button" onClick={() => void goDay(1)} className="reports-page__icon-btn">
+                <IoCaretForward className="reports-page__icon" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportDay}
+                disabled={loading || dayEntries.length === 0}
+                className="reports-page__export-btn"
+              >
+                Speichern
+              </button>
+            </div>
+
+
+            <div className="reports-page__metric">
+              Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span> | Netto:{" "}
+              <span className="reports-page__metric-value reports-page__metric-value-netto">{fmtHM(dayStats.workMinutes - dayStats.missingBreak)}</span>
+            </div>
+            <div className="reports-page__metric-detail">
+              Pause: {fmtHM(dayStats.breakMinutes)} | erforderlich {fmtHM(dayStats.requiredBreak)} | fehlend{" "}
+              {fmtHM(dayStats.missingBreak)}
+            </div>
+
+            {actionError && <div className="reports-page__error reports-page__error--inline">{actionError}</div>}
+            {actionInfo && <div className="reports-page__info">{actionInfo}</div>}
           </div>
-
-          <div className="reports-page__metric">
-            Brutto: <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes + dayStats.breakMinutes)}</span> / Netto:{" "}
-            <span className="reports-page__metric-value">{fmtHM(dayStats.workMinutes)}</span>
-          </div>
-          <div className="reports-page__metric-detail">
-            Pause: genommen {fmtHM(dayStats.breakMinutes)} / erforderlich {fmtHM(dayStats.requiredBreak)} / fehlend{" "}
-            {fmtHM(dayStats.missingBreak)}
-          </div>
-
-          {actionError && <div className="reports-page__error reports-page__error--inline">{actionError}</div>}
-          {actionInfo && <div className="reports-page__info">{actionInfo}</div>}
 
           <div className="reports-page__panel-subheader">
             <h3 className="reports-page__panel-subtitle">Arbeitsphasen ({dayKey})</h3>
@@ -782,7 +855,7 @@ export function Reports() {
 
           <div className="reports-page__list">
             {dayIntervals.length === 0 ? (
-              <div className="reports-page__empty">Noch keine Arbeitsphasen.</div>
+              <div className="reports-page__empty">Keine Arbeitsphasen an diesem Tag</div>
             ) : (
               dayIntervals.map((it, idx) => {
                 const currentProject = it.project?.trim() ? it.project : "(ohne Projekt)";
@@ -792,7 +865,7 @@ export function Reports() {
                 const disabled = loading || actionBusyKey !== null;
 
                 return (
-                  <div key={`${dayKey}-${idx}`} className="reports-page__row reports-page__row--project">
+                  <div key={`${dayKey}-${idx}`} className="reports-page__row">
                     <div className="reports-page__project-main">
                       <div className="reports-page__row-main">
                         <span className="reports-page__row-time">
@@ -815,43 +888,10 @@ export function Reports() {
                         {fmtHM(Math.round((+it.end - +it.start) / 60000))}
                       </div>
 
-                      {/* Mobile: Normale Buttons */}
-                      <div className="reports-page__split-btn-group sm:hidden">
-                        <button
-                          type="button"
-                          onClick={() => openEditProjectMenu(it.start, idx, currentProject)}
-                          disabled={disabled}
-                          className="reports-page__split-btn reports-page__split-btn--left"
-                          title="Projekt ändern"
-                        >
-                          {isEditingProject ? "Projekt..." : "Projekt"}
-                        </button>
 
-                        <button
-                          type="button"
-                          onClick={() => openEditTaetigkeitMenu(it.start, idx, currentProject, it.taetigkeit)}
-                          disabled={disabled}
-                          className="reports-page__split-btn reports-page__split-btn--middle"
-                          title="Tätigkeit ändern"
-                        >
-                          {isEditingTaetigkeit ? "Tätigkeit..." : "Tätigkeit"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => void activateProject(currentProject, it.taetigkeit)}
-                          disabled={disabled}
-                          className="reports-page__split-btn reports-page__split-btn--icon"
-                          title="Projekt starten"
-                        >
-                          <span className="reports-page__lookup-btn-start-icon">
-                            <IconStart />
-                          </span>
-                        </button>
-                      </div>
 
                       {/* Desktop Dropdown */}
-                      <div className="hidden sm:flex items-center">
+                      <div className="flex items-center">
                         <Menu as="div" className="relative inline-block text-left">
                           <MenuButton
                             disabled={disabled}
@@ -931,12 +971,12 @@ export function Reports() {
           </div>
 
           <div className="reports-page__panel-subheader">
-            <h3 className="reports-page__panel-subtitle">Projekt-Summary (Tag)</h3>
+            <h3 className="reports-page__panel-subtitle">Projektzeiten ({dayKey})</h3>
           </div>
 
           <div className="reports-page__list">
             {dayProjectTotals.length === 0 ? (
-              <div className="reports-page__empty">Keine Projektzeit an diesem Tag.</div>
+              <div className="reports-page__empty">Keine Projekte an diesem Tag</div>
             ) : (
               dayProjectTotals.map((project) => (
                 <div key={`${dayKey}-sum-${project.name}`} className="reports-page__row">
@@ -949,43 +989,72 @@ export function Reports() {
         </div>
 
         <div className="reports-page__panel">
-          <div className="reports-page__panel-title">Monatsbericht</div>
-          <div className="reports-page__controls">
-            <button type="button" onClick={() => void goMonth(-1)} className="reports-page__icon-btn">
-              <IoCaretBack className="reports-page__icon" />
-            </button>
+          <div className="reports-page__panel-top">
+            <div className="reports-page__panel-title">Monatsbericht</div>
+            <div className="reports-page__controls">
+              <button type="button" onClick={() => void goMonth(-1)} className="reports-page__icon-btn">
+                <IoCaretBack className="reports-page__icon" />
+              </button>
 
-            <input
-              type="month"
-              value={toInputMonth(monthKey)}
-              onChange={(e) => {
-                const next = fromInputMonth(e.target.value);
-                setMonthKey(next);
-                void loadMonth(next);
-              }}
-              className="reports-page__input"
-            />
+              <input
+                type="month"
+                value={toInputMonth(monthKey)}
+                onChange={(e) => {
+                  const next = fromInputMonth(e.target.value);
+                  setMonthKey(next);
+                  void loadMonth(next);
+                }}
+                className="reports-page__input"
+              />
 
-            <button type="button" onClick={() => void goMonth(1)} className="reports-page__icon-btn">
-              <IoCaretForward className="reports-page__icon" />
-            </button>
+              <button type="button" onClick={() => void goMonth(1)} className="reports-page__icon-btn">
+                <IoCaretForward className="reports-page__icon" />
+              </button>
 
-            <button
-              type="button"
-              onClick={handleExportMonth}
-              disabled={loading || monthEntries.length === 0}
-              className="reports-page__export-btn"
-            >
-              Speichern
-            </button>
+              <button
+                type="button"
+                onClick={handleExportMonth}
+                disabled={loading || monthEntries.length === 0}
+                className="reports-page__export-btn"
+              >
+                Speichern
+              </button>
+            </div>
+
+            <div className="reports-page__metric">
+              Brutto: <span className="reports-page__metric-value">{fmtHM(monthStats.workMinutes)}</span> | Netto:{" "}
+              <span className="reports-page__metric-value reports-page__metric-value-netto">{fmtHM(monthStats.netMinutes)}</span>
+            </div>
+            <div className="reports-page__metric-detail">
+              Pause: {fmtHM(monthStats.breakMinutes)} | erforderlich {fmtHM(monthStats.requiredBreak)} | fehlend{" "}
+              {fmtHM(monthStats.missingBreak)}
+            </div>
           </div>
 
-          <div className="reports-page__metric">
-            Buchungen im Monat: <span className="reports-page__metric-value">{monthEntries.length}</span>
+
+          <div className="reports-page__panel-subheader">
+            <h3 className="reports-page__panel-subtitle">Netto Arbeitszeiten (Monat {monthKey})</h3>
           </div>
-          <div className="reports-page__metric">
-            Gesamt Projektzeit: <span className="reports-page__metric-value">{fmtHM(monthTotalMinutes)}</span>
+
+          <div className="reports-page__list">
+            {monthDayWorkTotals.length === 0 ? (
+              <div className="reports-page__empty">Keine Arbeitszeiten in diesem Monat</div>
+            ) : (
+              monthDayWorkTotals.map((day) => (
+                <div key={`${monthKey}-${day.day}`} className="reports-page__row">
+                  <div className="reports-page__project-main">
+                    <div className="reports-page__project-name">{day.day}</div>
+                  </div>
+                  <div className="reports-page__project-actions">
+                    <div className="reports-page__project-minutes">{fmtHM(day.nettoMinutes)}</div>
+                  </div>
+                </div>               
+              ))
+            )}
           </div>
+
+
+
 
           <div className="reports-page__panel-subheader">
             <h3 className="reports-page__panel-subtitle">Projektzeiten (Monat {monthKey})</h3>
@@ -993,11 +1062,11 @@ export function Reports() {
 
           <div className="reports-page__list">
             {monthProjectTotals.length === 0 ? (
-              <div className="reports-page__empty">Keine Arbeitsphasen in diesem Monat.</div>
+              <div className="reports-page__empty">Keine Projekte in diesem Monat</div>
             ) : (
               monthProjectTotals.map((project) => {
                 return (
-                  <div key={`${monthKey}-${project.name}`} className="reports-page__row reports-page__row--project">
+                  <div key={`${monthKey}-${project.name}`} className="reports-page__row">
                     <div className="reports-page__project-main">
                       <div className="reports-page__project-name">{project.name}</div>
                     </div>
