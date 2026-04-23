@@ -268,6 +268,3 @@ export function getUserStatusLookup() {
 export function getCurrentStatus() {
   return http<StatusEntry[]>(`${BASE}/StatusAnzeige`);
 }
-
-
-

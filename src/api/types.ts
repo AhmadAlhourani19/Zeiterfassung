@@ -4,7 +4,7 @@ export type StempeluhrEntry = {
   "@form"?: string;
 
   Key: string;
-  Zeit: string; // ISO string
+  Zeit: string; 
   Buchungstyp: "0" | "1" | "2"; // "0" Anmeldung, "1" Abmeldung, "2" Pause
   Projekt: string;
   Taetigkeit?: string;

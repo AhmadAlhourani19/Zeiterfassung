@@ -70,12 +70,6 @@ export function Projects({ projects, lookupProjects = [], loading, error, onRelo
     return set;
   }, [projectNames]);
 
-  // const filteredNames = useMemo(() => {
-  //   const query = "search.trim().toLowerCase()";
-  //   if (!query) return projectNames;
-  //   return projectNames.filter((name) => name.toLowerCase().includes(query));
-  // }, [projectNames, search]);
-
   const lookupNames = useMemo(() => {
     const seen = new Set<string>();
     const names: string[] = [];

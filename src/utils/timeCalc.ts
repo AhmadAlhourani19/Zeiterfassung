@@ -23,13 +23,6 @@ function readTaetigkeit(entry: StempeluhrEntry) {
   return (entry.Taetigkeit ?? entry["T\u00e4tigkeit"] ?? "").trim();
 }
 
-/**
- * Intervals:
- * - Anmeldung starts interval
- * - Abmeldung ends interval
- * - Another Anmeldung while open => closes previous interval (project switch) and starts new one
- * - Open interval closes at "now"
- */
 export function buildIntervalsForDay(entries: StempeluhrEntry[], now = new Date()): Interval[] {
   const sorted = [...entries].sort((a, b) => +new Date(a.Zeit) - +new Date(b.Zeit));
   const intervals: Interval[] = [];
@@ -97,7 +90,7 @@ export function calcWorkAndBreak(intervals: Interval[]) {
     breakMinutes += minutesBetween(sorted[i].end, sorted[i + 1].start);
   }
 
-  // ArbZG §4: >6h -> 30min, >9h -> 45min
+  // ArbZG ï¿½4: >6h -> 30min, >9h -> 45min
   let requiredBreak = 0;
   if (workMinutes > 9 * 60) requiredBreak = 45;
   else if (workMinutes > 6 * 60) requiredBreak = 30;
